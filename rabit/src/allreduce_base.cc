@@ -6,8 +6,9 @@
  * \author Tianqi Chen, Ignacio Cano, Tianyi Zhou
  */
 #define NOMINMAX
+#include "rabit/base.h"
+#include "rabit/internal/rabit-inl.h"
 #include "allreduce_base.h"
-#include <rabit/base.h>
 
 #ifndef _WIN32
 #include <netinet/tcp.h>
@@ -103,9 +104,7 @@ bool AllreduceBase::Init(int argc, char* argv[]) {
     }
   }
   if (dmlc_role != "worker") {
-    fprintf(stderr, "Rabit Module currently only work with dmlc worker"\
-            ", quit this program by exit 0\n");
-    exit(0);
+    LOG(FATAL) << "Rabit Module currently only work with dmlc worker";
   }
 
   // clear the setting before start reconnection
@@ -122,7 +121,9 @@ bool AllreduceBase::Init(int argc, char* argv[]) {
 bool AllreduceBase::Shutdown() {
   try {
     for (auto & all_link : all_links) {
-      all_link.sock.Close();
+      if (!all_link.sock.IsClosed()) {
+        all_link.sock.Close();
+      }
     }
     all_links.clear();
     tree_links.plinks.clear();
@@ -135,7 +136,7 @@ bool AllreduceBase::Shutdown() {
     utils::TCPSocket::Finalize();
     return true;
   } catch (const std::exception& e) {
-    fprintf(stderr, "failed to shutdown due to %s\n", e.what());
+    LOG(WARNING) << "Failed to shutdown due to" << e.what();
     return false;
   }
 }
@@ -208,15 +209,15 @@ void AllreduceBase::SetParam(const char *name, const char *val) {
     rabit_timeout = utils::StringToBool(val);
   }
   if (!strcmp(name, "rabit_timeout_sec")) {
-    timeout_sec = atoi(val);
-    utils::Assert(timeout_sec >= 0, "rabit_timeout_sec should be non negative second");
+    timeout_sec = std::chrono::seconds(atoi(val));
+    utils::Assert(timeout_sec.count() >= 0, "rabit_timeout_sec should be non negative second");
   }
   if (!strcmp(name, "rabit_enable_tcp_no_delay")) {
     if (!strcmp(val, "true")) {
       rabit_enable_tcp_no_delay = true;
     } else {
       rabit_enable_tcp_no_delay = false;
-}
+    }
   }
 }
 /*!
@@ -233,10 +234,10 @@ utils::TCPSocket AllreduceBase::ConnectTracker() const {
   do {
     if (!tracker.Connect(utils::SockAddr(tracker_uri.c_str(), tracker_port))) {
       if (++retry >= connect_retry) {
-        fprintf(stderr, "connect to (failed): [%s]\n", tracker_uri.c_str());
+        LOG(WARNING) << "Connect to (failed): [" << tracker_uri << "]\n";
         utils::Socket::Error("Connect");
       } else {
-        fprintf(stderr, "retry connect to ip(retry time %d): [%s]\n", retry, tracker_uri.c_str());
+        LOG(WARNING) << "Retry connect to ip(retry time " << retry << "): [" << tracker_uri << "]\n";
 #if defined(_MSC_VER) || defined (__MINGW32__)
         Sleep(retry << 1);
 #else
@@ -272,7 +273,7 @@ bool AllreduceBase::ReConnectLinks(const char *cmd) {
   }
   try {
     utils::TCPSocket tracker = this->ConnectTracker();
-    fprintf(stdout, "task %s connected to the tracker\n", task_id.c_str());
+    LOG(INFO) << "task " << task_id << " connected to the tracker";
     tracker.SendStr(std::string(cmd));
 
     // the rank of previous link, next link in ring
@@ -292,10 +293,11 @@ bool AllreduceBase::ReConnectLinks(const char *cmd) {
            "must keep rank to same if the node already have one");
     rank = newrank;
 
-    // tracker got overwhelemed and not able to assign correct rank
-    if (rank == -1) exit(-1);
+    if (rank == -1) {
+      LOG(FATAL) << "tracker got overwhelemed and not able to assign correct rank";
+    }
 
-    fprintf(stdout, "task %s got new rank %d\n", task_id.c_str(), rank);
+    LOG(CONSOLE) << "task " << task_id << " got new rank " << rank;
 
     Assert(tracker.RecvAll(&num_neighbors, sizeof(num_neighbors)) == \
          sizeof(num_neighbors), "ReConnectLink failure 4");
@@ -421,7 +423,7 @@ bool AllreduceBase::ReConnectLinks(const char *cmd) {
         setsockopt(all_link.sock, IPPROTO_TCP,
                    TCP_NODELAY, reinterpret_cast<void *>(&tcpNoDelay), sizeof(tcpNoDelay));
 #else
-        fprintf(stderr, "tcp no delay is not implemented on non unix platforms\n");
+        LOG(WARNING) << "tcp no delay is not implemented on non unix platforms";
 #endif
       }
       if (tree_neighbors.count(all_link.rank) != 0) {
@@ -441,7 +443,7 @@ bool AllreduceBase::ReConnectLinks(const char *cmd) {
            "cannot find next ring in the link");
     return true;
   } catch (const std::exception& e) {
-    fprintf(stderr, "failed in ReconnectLink %s\n", e.what());
+    LOG(WARNING) << "failed in ReconnectLink " << e.what();
     return false;
   }
 }
@@ -549,14 +551,7 @@ AllreduceBase::TryAllreduceTree(void *sendrecvbuf_,
     // finish runing allreduce
     if (finished) break;
     // select must return
-    watcher.Poll();
-    // exception handling
-    for (int i = 0; i < nlink; ++i) {
-      // recive OOB message from some link
-      if (watcher.CheckExcept(links[i].sock)) {
-        return ReportError(&links[i], kGetExcept);
-      }
-    }
+    watcher.Poll(timeout_sec);
     // read data from childs
     for (int i = 0; i < nlink; ++i) {
       if (i != parent_index && watcher.CheckRead(links[i].sock)) {
@@ -592,7 +587,7 @@ AllreduceBase::TryAllreduceTree(void *sendrecvbuf_,
       // eachreduce size
       if (max_reduce < total_size) {
           max_reduce = max_reduce - max_reduce % eachreduce;
-}
+      }
 
       // peform reduce, can be at most two rounds
       while (size_up_reduce < max_reduce) {
@@ -729,14 +724,7 @@ AllreduceBase::TryBroadcast(void *sendrecvbuf_, size_t total_size, int root) {
     // finish running
     if (finished) break;
     // select
-    watcher.Poll();
-    // exception handling
-    for (int i = 0; i < nlink; ++i) {
-      // recive OOB message from some link
-      if (watcher.CheckExcept(links[i].sock)) {
-        return ReportError(&links[i], kGetExcept);
-      }
-    }
+    watcher.Poll(timeout_sec);
     if (in_link == -2) {
       // probe in-link
       for (int i = 0; i < nlink; ++i) {
@@ -819,7 +807,7 @@ AllreduceBase::TryAllgatherRing(void *sendrecvbuf_, size_t total_size,
       finished  = false;
     }
     if (finished) break;
-    watcher.Poll();
+    watcher.Poll(timeout_sec);
     if (read_ptr != stop_read && watcher.CheckRead(next.sock)) {
       size_t size = stop_read - read_ptr;
       size_t start = read_ptr % total_size;
@@ -831,7 +819,10 @@ AllreduceBase::TryAllgatherRing(void *sendrecvbuf_, size_t total_size,
         read_ptr += static_cast<size_t>(len);
       } else {
         ReturnType ret = Errno2Return();
-        if (ret != kSuccess) return ReportError(&next, ret);
+        if (ret != kSuccess) {
+          auto err = ReportError(&next, ret);
+          return err;
+        }
       }
     }
     if (write_ptr < read_ptr && write_ptr != stop_write) {
@@ -845,7 +836,10 @@ AllreduceBase::TryAllgatherRing(void *sendrecvbuf_, size_t total_size,
         write_ptr += static_cast<size_t>(len);
       } else {
         ReturnType ret = Errno2Return();
-        if (ret != kSuccess) return ReportError(&prev, ret);
+        if (ret != kSuccess) {
+          auto err = ReportError(&prev, ret);
+          return err;
+        }
       }
     }
   }
@@ -913,7 +907,7 @@ AllreduceBase::TryReduceScatterRing(void *sendrecvbuf_,
       finished = false;
     }
     if (finished) break;
-    watcher.Poll();
+    watcher.Poll(timeout_sec);
     if (read_ptr != stop_read && watcher.CheckRead(next.sock)) {
       ReturnType ret = next.ReadToRingBuffer(reduce_ptr, stop_read);
       if (ret != kSuccess) {

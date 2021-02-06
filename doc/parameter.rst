@@ -38,7 +38,8 @@ General Parameters
 
 * ``nthread`` [default to maximum number of threads available if not set]
 
-  - Number of parallel threads used to run XGBoost
+  - Number of parallel threads used to run XGBoost.  When choosing it, please keep thread
+    contention and hyperthreading in mind.
 
 * ``disable_default_eval_metric`` [default=``false``]
 
@@ -107,9 +108,10 @@ Parameters for Tree Booster
     'colsample_bynode':0.5}`` with 64 features will leave 8 features to choose from at
     each split.
 
-    On Python interface, one can set the ``feature_weights`` for DMatrix to define the
-    probability of each feature being selected when using column sampling.  There's a
-    similar parameter for ``fit`` method in sklearn interface.
+    On Python interface, when using ``hist``, ``gpu_hist`` or ``exact`` tree method, one
+    can set the ``feature_weights`` for DMatrix to define the probability of each feature
+    being selected when using column sampling.  There's a similar parameter for ``fit``
+    method in sklearn interface.
 
 * ``lambda`` [default=1, alias: ``reg_lambda``]
 
@@ -376,7 +378,7 @@ Specify the learning task and the corresponding learning objective. The objectiv
 
 * ``eval_metric`` [default according to objective]
 
-  - Evaluation metrics for validation data, a default metric will be assigned according to objective (rmse for regression, and error for classification, mean average precision for ranking)
+  - Evaluation metrics for validation data, a default metric will be assigned according to objective (rmse for regression, and logloss for classification, mean average precision for ranking)
   - User can add multiple evaluation metrics. Python users: remember to pass the metrics in as list of parameters pairs instead of map, so that latter ``eval_metric`` won't override previous one
   - The choices are listed below:
 
@@ -409,6 +411,10 @@ Specify the learning task and the corresponding learning objective. The objectiv
 * ``seed`` [default=0]
 
   - Random number seed.  This parameter is ignored in R package, use `set.seed()` instead.
+
+* ``seed_per_iteration`` [default=false]
+
+  - Seed PRNG determnisticly via iterator number, this option will be switched on automatically on distributed mode.
 
 ***********************
 Command Line Parameters

@@ -127,17 +127,17 @@ bool QuantileHistMaker::UpdatePredictionCache(
 
 template <typename GradientSumT>
 void BatchHistSynchronizer<GradientSumT>::SyncHistograms(BuilderT *builder,
-                                                         int starting_index,
-                                                         int sync_count,
+                                                         int,
+                                                         int,
                                                          RegTree *p_tree) {
   builder->builder_monitor_.Start("SyncHistograms");
   const size_t nbins = builder->hist_builder_.GetNumBins();
-  common::BlockedSpace2d space(builder->nodes_for_explicit_hist_build_.size(), [&](size_t node) {
+  common::BlockedSpace2d space(builder->nodes_for_explicit_hist_build_.size(), [&](size_t) {
     return nbins;
   }, 1024);
 
   common::ParallelFor2d(space, builder->nthread_, [&](size_t node, common::Range1d r) {
-    const auto entry = builder->nodes_for_explicit_hist_build_[node];
+    const auto& entry = builder->nodes_for_explicit_hist_build_[node];
     auto this_hist = builder->hist_[entry.nid];
     // Merging histograms from each thread into once
     builder->hist_buffer_.ReduceHist(node, r.begin(), r.end());
@@ -159,11 +159,11 @@ void DistributedHistSynchronizer<GradientSumT>::SyncHistograms(BuilderT* builder
                                                  RegTree *p_tree) {
   builder->builder_monitor_.Start("SyncHistograms");
   const size_t nbins = builder->hist_builder_.GetNumBins();
-  common::BlockedSpace2d space(builder->nodes_for_explicit_hist_build_.size(), [&](size_t node) {
+  common::BlockedSpace2d space(builder->nodes_for_explicit_hist_build_.size(), [&](size_t) {
     return nbins;
   }, 1024);
   common::ParallelFor2d(space, builder->nthread_, [&](size_t node, common::Range1d r) {
-    const auto entry = builder->nodes_for_explicit_hist_build_[node];
+    const auto& entry = builder->nodes_for_explicit_hist_build_[node];
     auto this_hist = builder->hist_[entry.nid];
     // Merging histograms from each thread into once
     builder->hist_buffer_.ReduceHist(node, r.begin(), r.end());
@@ -182,13 +182,15 @@ void DistributedHistSynchronizer<GradientSumT>::SyncHistograms(BuilderT* builder
     }
   });
   builder->builder_monitor_.Start("SyncHistogramsAllreduce");
+
   builder->histred_.Allreduce(builder->hist_[starting_index].data(),
                                     builder->hist_builder_.GetNumBins() * sync_count);
+
   builder->builder_monitor_.Stop("SyncHistogramsAllreduce");
 
   ParallelSubtractionHist(builder, space, builder->nodes_for_explicit_hist_build_, p_tree);
 
-  common::BlockedSpace2d space2(builder->nodes_for_subtraction_trick_.size(), [&](size_t node) {
+  common::BlockedSpace2d space2(builder->nodes_for_subtraction_trick_.size(), [&](size_t) {
     return nbins;
   }, 1024);
   ParallelSubtractionHist(builder, space2, builder->nodes_for_subtraction_trick_, p_tree);
@@ -202,7 +204,7 @@ void DistributedHistSynchronizer<GradientSumT>::ParallelSubtractionHist(
                                   const std::vector<ExpandEntryT>& nodes,
                                   const RegTree * p_tree) {
   common::ParallelFor2d(space, builder->nthread_, [&](size_t node, common::Range1d r) {
-    const auto entry = nodes[node];
+    const auto& entry = nodes[node];
     if (!((*p_tree)[entry.nid].IsLeftChild())) {
       auto this_hist = builder->hist_[entry.nid];
 
@@ -219,7 +221,7 @@ template <typename GradientSumT>
 void BatchHistRowsAdder<GradientSumT>::AddHistRows(BuilderT *builder,
                                                    int *starting_index,
                                                    int *sync_count,
-                                                   RegTree *p_tree) {
+                                                   RegTree *) {
   builder->builder_monitor_.Start("AddHistRows");
 
   for (auto const& entry : builder->nodes_for_explicit_hist_build_) {
@@ -232,7 +234,7 @@ void BatchHistRowsAdder<GradientSumT>::AddHistRows(BuilderT *builder,
   for (auto const& node : builder->nodes_for_subtraction_trick_) {
     builder->hist_.AddHistRow(node.nid);
   }
-
+  builder->hist_.AllocateAllData();
   builder->builder_monitor_.Stop("AddHistRows");
 }
 
@@ -268,6 +270,8 @@ void DistributedHistRowsAdder<GradientSumT>::AddHistRows(BuilderT *builder,
       builder->hist_local_worker_.AddHistRow(nid);
     }
   }
+  builder->hist_.AllocateAllData();
+  builder->hist_local_worker_.AllocateAllData();
   (*sync_count) = std::max(1, n_left);
   builder->builder_monitor_.Stop("AddHistRows");
 }
@@ -827,18 +831,18 @@ void QuantileHistMaker::Builder<GradientSumT>::InitData(const GHistIndexMatrix& 
     const uint32_t nbins_f0 = gmat.cut.Ptrs()[1] - gmat.cut.Ptrs()[0];
     if (nrow * ncol == nnz) {
       // dense data with zero-based indexing
-      data_layout_ = kDenseDataZeroBased;
+      data_layout_ = DataLayout::kDenseDataZeroBased;
     } else if (nbins_f0 == 0 && nrow * (ncol - 1) == nnz) {
       // dense data with one-based indexing
-      data_layout_ = kDenseDataOneBased;
+      data_layout_ = DataLayout::kDenseDataOneBased;
     } else {
       // sparse data
-      data_layout_ = kSparseData;
+      data_layout_ = DataLayout::kSparseData;
     }
   }
   // store a pointer to the tree
   p_last_tree_ = &tree;
-  if (data_layout_ == kDenseDataOneBased) {
+  if (data_layout_ == DataLayout::kDenseDataOneBased) {
     column_sampler_.Init(info.num_col_, info.feature_weigths.ConstHostVector(),
                          param_.colsample_bynode, param_.colsample_bylevel,
                          param_.colsample_bytree, true);
@@ -847,7 +851,8 @@ void QuantileHistMaker::Builder<GradientSumT>::InitData(const GHistIndexMatrix& 
                          param_.colsample_bynode, param_.colsample_bylevel,
                          param_.colsample_bytree, false);
   }
-  if (data_layout_ == kDenseDataZeroBased || data_layout_ == kDenseDataOneBased) {
+  if (data_layout_ == DataLayout::kDenseDataZeroBased
+      || data_layout_ == DataLayout::kDenseDataOneBased) {
     /* specialized code for dense data:
        choose the column that has a least positive number of discrete bins.
        For dense data (with no missing value),
@@ -1138,9 +1143,9 @@ void QuantileHistMaker::Builder<GradientSumT>::FindSplitConditions(
     // split_cond = -1 indicates that split_pt is less than all known cut points
     CHECK_LT(upper_bound,
              static_cast<uint32_t>(std::numeric_limits<int32_t>::max()));
-    for (uint32_t i = lower_bound; i < upper_bound; ++i) {
-      if (split_pt == gmat.cut.Values()[i]) {
-        split_cond = static_cast<int32_t>(i);
+    for (uint32_t bound = lower_bound; bound < upper_bound; ++bound) {
+      if (split_pt == gmat.cut.Values()[bound]) {
+        split_cond = static_cast<int32_t>(bound);
       }
     }
     (*split_conditions)[i] = split_cond;
@@ -1151,11 +1156,11 @@ void QuantileHistMaker::Builder<GradientSumT>::AddSplitsToRowSet(
                                                const std::vector<ExpandEntry>& nodes,
                                                RegTree* p_tree) {
   const size_t n_nodes = nodes.size();
-  for (size_t i = 0; i < n_nodes; ++i) {
+  for (unsigned int i = 0; i < n_nodes; ++i) {
     const int32_t nid = nodes[i].nid;
     const size_t n_left = partition_builder_.GetNLeftElems(i);
     const size_t n_right = partition_builder_.GetNRightElems(i);
-
+    CHECK_EQ((*p_tree)[nid].LeftChild() + 1, (*p_tree)[nid].RightChild());
     row_set_collection_.AddSplit(nid, (*p_tree)[nid].LeftChild(),
         (*p_tree)[nid].RightChild(), n_left, n_right);
   }
@@ -1188,7 +1193,10 @@ void QuantileHistMaker::Builder<GradientSumT>::ApplySplit(const std::vector<Expa
   // 2.3 Split elements of row_set_collection_ to left and right child-nodes for each node
   // Store results in intermediate buffers from partition_builder_
   common::ParallelFor2d(space, this->nthread_, [&](size_t node_in_set, common::Range1d r) {
+    size_t begin = r.begin();
     const int32_t nid = nodes[node_in_set].nid;
+    const size_t task_id = partition_builder_.GetTaskIdx(node_in_set, begin);
+    partition_builder_.AllocateForTask(task_id);
       switch (column_matrix.GetTypeSize()) {
       case common::kUint8BinsTypeSize:
         PartitionKernel<uint8_t>(node_in_set, nid, r,
@@ -1236,7 +1244,8 @@ void QuantileHistMaker::Builder<GradientSumT>::InitNewNode(int nid,
     GHistRowT hist = hist_[nid];
     GradientPairT grad_stat;
     if (tree[nid].IsRoot()) {
-      if (data_layout_ == kDenseDataZeroBased || data_layout_ == kDenseDataOneBased) {
+      if (data_layout_ == DataLayout::kDenseDataZeroBased
+          || data_layout_ == DataLayout::kDenseDataOneBased) {
         const std::vector<uint32_t>& row_ptr = gmat.cut.Ptrs();
         const uint32_t ibegin = row_ptr[fid_least_bins_];
         const uint32_t iend = row_ptr[fid_least_bins_ + 1];

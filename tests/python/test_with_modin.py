@@ -2,7 +2,6 @@
 import numpy as np
 import xgboost as xgb
 import testing as tm
-import unittest
 import pytest
 
 try:
@@ -18,7 +17,7 @@ dpath = 'demo/data/'
 rng = np.random.RandomState(1994)
 
 
-class TestModin(unittest.TestCase):
+class TestModin:
 
     def test_modin(self):
 
@@ -43,7 +42,8 @@ class TestModin(unittest.TestCase):
         # incorrect dtypes
         df = md.DataFrame([[1, 2., 'x'], [2, 3., 'y']],
                           columns=['a', 'b', 'c'])
-        self.assertRaises(ValueError, xgb.DMatrix, df)
+        with pytest.raises(ValueError):
+            xgb.DMatrix(df)
 
         # numeric columns
         df = md.DataFrame([[1, 2., True], [2, 3., False]])
@@ -67,7 +67,8 @@ class TestModin(unittest.TestCase):
         # 0  1    1    0    0
         # 1  2    0    1    0
         # 2  3    0    0    1
-        result, _, _ = xgb.data._transform_pandas_df(dummies)
+        result, _, _ = xgb.data._transform_pandas_df(dummies,
+                                                     enable_categorical=False)
         exp = np.array([[1., 1., 0., 0.],
                         [2., 0., 1., 0.],
                         [3., 0., 0., 1.]])
@@ -112,16 +113,16 @@ class TestModin(unittest.TestCase):
     def test_modin_label(self):
         # label must be a single column
         df = md.DataFrame({'A': ['X', 'Y', 'Z'], 'B': [1, 2, 3]})
-        self.assertRaises(ValueError, xgb.data._transform_pandas_df, df,
-                          None, None, 'label', 'float')
+        with pytest.raises(ValueError):
+            xgb.data._transform_pandas_df(df, False, None, None, 'label', 'float')
 
         # label must be supported dtype
         df = md.DataFrame({'A': np.array(['a', 'b', 'c'], dtype=object)})
-        self.assertRaises(ValueError, xgb.data._transform_pandas_df, df,
-                          None, None, 'label', 'float')
+        with pytest.raises(ValueError):
+            xgb.data._transform_pandas_df(df, False, None, None, 'label', 'float')
 
         df = md.DataFrame({'A': np.array([1, 2, 3], dtype=int)})
-        result, _, _ = xgb.data._transform_pandas_df(df, None, None,
+        result, _, _ = xgb.data._transform_pandas_df(df, False, None, None,
                                                      'label', 'float')
         np.testing.assert_array_equal(result, np.array([[1.], [2.], [3.]],
                                                        dtype=float))

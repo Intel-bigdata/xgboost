@@ -1,6 +1,5 @@
 import numpy as np
 import xgboost as xgb
-import unittest
 import os
 import json
 import testing as tm
@@ -8,7 +7,7 @@ import pytest
 import locale
 import tempfile
 
-dpath = 'demo/data/'
+dpath = os.path.join(tm.PROJECT_ROOT, 'demo/data/')
 dtrain = xgb.DMatrix(dpath + 'agaricus.txt.train')
 dtest = xgb.DMatrix(dpath + 'agaricus.txt.test')
 
@@ -29,7 +28,7 @@ def json_model(model_path, parameters):
     return model
 
 
-class TestModels(unittest.TestCase):
+class TestModels:
     def test_glm(self):
         param = {'verbosity': 0, 'objective': 'binary:logistic',
                  'booster': 'gblinear', 'alpha': 0.0001, 'lambda': 1,
@@ -109,82 +108,6 @@ class TestModels(unittest.TestCase):
         for ii in range(len(preds_list)):
             for jj in range(ii + 1, len(preds_list)):
                 assert np.sum(np.abs(preds_list[ii] - preds_list[jj])) > 0
-
-    def run_eta_decay(self, tree_method):
-        watchlist = [(dtest, 'eval'), (dtrain, 'train')]
-        num_round = 4
-
-        # learning_rates as a list
-        # init eta with 0 to check whether learning_rates work
-        param = {'max_depth': 2, 'eta': 0, 'verbosity': 0,
-                 'objective': 'binary:logistic', 'tree_method': tree_method}
-        evals_result = {}
-        bst = xgb.train(param, dtrain, num_round, watchlist,
-                        callbacks=[xgb.callback.reset_learning_rate([
-                            0.8, 0.7, 0.6, 0.5
-                        ])],
-                        evals_result=evals_result)
-        eval_errors_0 = list(map(float, evals_result['eval']['error']))
-        assert isinstance(bst, xgb.core.Booster)
-        # validation error should decrease, if eta > 0
-        assert eval_errors_0[0] > eval_errors_0[-1]
-
-        # init learning_rate with 0 to check whether learning_rates work
-        param = {'max_depth': 2, 'learning_rate': 0, 'verbosity': 0,
-                 'objective': 'binary:logistic', 'tree_method': tree_method}
-        evals_result = {}
-        bst = xgb.train(param, dtrain, num_round, watchlist,
-                        callbacks=[xgb.callback.reset_learning_rate(
-                            [0.8, 0.7, 0.6, 0.5])],
-                        evals_result=evals_result)
-        eval_errors_1 = list(map(float, evals_result['eval']['error']))
-        assert isinstance(bst, xgb.core.Booster)
-        # validation error should decrease, if learning_rate > 0
-        assert eval_errors_1[0] > eval_errors_1[-1]
-
-        # check if learning_rates override default value of eta/learning_rate
-        param = {
-            'max_depth': 2, 'verbosity': 0, 'objective': 'binary:logistic',
-            'tree_method': tree_method
-        }
-        evals_result = {}
-        bst = xgb.train(param, dtrain, num_round, watchlist,
-                        callbacks=[xgb.callback.reset_learning_rate(
-                            [0, 0, 0, 0]
-                        )],
-                        evals_result=evals_result)
-        eval_errors_2 = list(map(float, evals_result['eval']['error']))
-        assert isinstance(bst, xgb.core.Booster)
-        # validation error should not decrease, if eta/learning_rate = 0
-        assert eval_errors_2[0] == eval_errors_2[-1]
-
-        # learning_rates as a customized decay function
-        def eta_decay(ithround, num_boost_round):
-            return num_boost_round / (ithround + 1)
-
-        evals_result = {}
-        bst = xgb.train(param, dtrain, num_round, watchlist,
-                        callbacks=[
-                            xgb.callback.reset_learning_rate(eta_decay)
-                        ],
-                        evals_result=evals_result)
-        eval_errors_3 = list(map(float, evals_result['eval']['error']))
-
-        assert isinstance(bst, xgb.core.Booster)
-
-        assert eval_errors_3[0] == eval_errors_2[0]
-
-        for i in range(1, len(eval_errors_0)):
-            assert eval_errors_3[i] != eval_errors_2[i]
-
-    def test_eta_decay_hist(self):
-        self.run_eta_decay('hist')
-
-    def test_eta_decay_approx(self):
-        self.run_eta_decay('approx')
-
-    def test_eta_decay_exact(self):
-        self.run_eta_decay('exact')
 
     def test_boost_from_prediction(self):
         # Re-construct dtrain here to avoid modification
@@ -285,12 +208,14 @@ class TestModels(unittest.TestCase):
 
         bst = xgb.train([], dm1)
         bst.predict(dm1)  # success
-        self.assertRaises(ValueError, bst.predict, dm2)
+        with pytest.raises(ValueError):
+            bst.predict(dm2)
         bst.predict(dm1)  # success
 
         bst = xgb.train([], dm2)
         bst.predict(dm2)  # success
-        self.assertRaises(ValueError, bst.predict, dm1)
+        with pytest.raises(ValueError):
+            bst.predict(dm1)
         bst.predict(dm2)  # success
 
     def test_model_binary_io(self):
@@ -401,3 +326,96 @@ class TestModels(unittest.TestCase):
         parameters = {'tree_method': 'hist', 'booster': 'dart',
                       'objective': 'multi:softmax'}
         validate_model(parameters)
+
+    @pytest.mark.parametrize('booster', ['gbtree', 'dart'])
+    def test_slice(self, booster):
+        from sklearn.datasets import make_classification
+        num_classes = 3
+        X, y = make_classification(n_samples=1000, n_informative=5,
+                                   n_classes=num_classes)
+        dtrain = xgb.DMatrix(data=X, label=y)
+        num_parallel_tree = 4
+        num_boost_round = 16
+        total_trees = num_parallel_tree * num_classes * num_boost_round
+        booster = xgb.train({
+            'num_parallel_tree': 4, 'subsample': 0.5, 'num_class': 3, 'booster': booster,
+            'objective': 'multi:softprob'},
+                            num_boost_round=num_boost_round, dtrain=dtrain)
+        assert len(booster.get_dump()) == total_trees
+        beg = 3
+        end = 7
+        sliced: xgb.Booster = booster[beg: end]
+
+        sliced_trees = (end - beg) * num_parallel_tree * num_classes
+        assert sliced_trees == len(sliced.get_dump())
+
+        sliced_trees = sliced_trees // 2
+        sliced: xgb.Booster = booster[beg: end: 2]
+        assert sliced_trees == len(sliced.get_dump())
+
+        sliced: xgb.Booster = booster[beg: ...]
+        sliced_trees = (num_boost_round - beg) * num_parallel_tree * num_classes
+        assert sliced_trees == len(sliced.get_dump())
+
+        sliced: xgb.Booster = booster[beg:]
+        sliced_trees = (num_boost_round - beg) * num_parallel_tree * num_classes
+        assert sliced_trees == len(sliced.get_dump())
+
+        sliced: xgb.Booster = booster[:end]
+        sliced_trees = end * num_parallel_tree * num_classes
+        assert sliced_trees == len(sliced.get_dump())
+
+        sliced: xgb.Booster = booster[...:end]
+        sliced_trees = end * num_parallel_tree * num_classes
+        assert sliced_trees == len(sliced.get_dump())
+
+        with pytest.raises(ValueError, match=r'>= 0'):
+            booster[-1: 0]
+
+        # we do not accept empty slice.
+        with pytest.raises(ValueError):
+            booster[1:1]
+        # stop can not be smaller than begin
+        with pytest.raises(ValueError, match=r'Invalid.*'):
+            booster[3:0]
+        with pytest.raises(ValueError, match=r'Invalid.*'):
+            booster[3:-1]
+        # negative step is not supported.
+        with pytest.raises(ValueError, match=r'.*>= 1.*'):
+            booster[0:2:-1]
+        # step can not be 0.
+        with pytest.raises(ValueError, match=r'.*>= 1.*'):
+            booster[0:2:0]
+
+        trees = [_ for _ in booster]
+        assert len(trees) == num_boost_round
+
+        with pytest.raises(TypeError):
+            booster["wrong type"]
+        with pytest.raises(IndexError):
+            booster[:num_boost_round+1]
+        with pytest.raises(ValueError):
+            booster[1, 2]       # too many dims
+        # setitem is not implemented as model is immutable during slicing.
+        with pytest.raises(TypeError):
+            booster[...:end] = booster
+
+        sliced_0 = booster[1:3]
+        sliced_1 = booster[3:7]
+
+        predt_0 = sliced_0.predict(dtrain, output_margin=True)
+        predt_1 = sliced_1.predict(dtrain, output_margin=True)
+
+        merged = predt_0 + predt_1 - 0.5  # base score.
+        single = booster[1:7].predict(dtrain, output_margin=True)
+        np.testing.assert_allclose(merged, single, atol=1e-6)
+
+        sliced_0 = booster[1:7:2]  # 1,3,5
+        sliced_1 = booster[2:8:2]  # 2,4,6
+
+        predt_0 = sliced_0.predict(dtrain, output_margin=True)
+        predt_1 = sliced_1.predict(dtrain, output_margin=True)
+
+        merged = predt_0 + predt_1 - 0.5
+        single = booster[1:7].predict(dtrain, output_margin=True)
+        np.testing.assert_allclose(merged, single, atol=1e-6)

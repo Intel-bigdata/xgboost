@@ -15,6 +15,7 @@
 #include "simple_dmatrix.h"
 #include "./simple_batch_iterator.h"
 #include "../common/random.h"
+#include "../common/threading_utils.h"
 #include "adapter.h"
 
 namespace xgboost {
@@ -121,10 +122,7 @@ BatchSet<EllpackPage> SimpleDMatrix::GetEllpackBatches(const BatchParam& param) 
 template <typename AdapterT>
 SimpleDMatrix::SimpleDMatrix(AdapterT* adapter, float missing, int nthread) {
   // Set number of threads but keep old value so we can reset it after
-  const int nthreadmax = omp_get_max_threads();
-  if (nthread <= 0) nthread = nthreadmax;
-  int nthread_original = omp_get_max_threads();
-  omp_set_num_threads(nthread);
+  int nthread_original = common::OmpSetNumThreadsWithoutHT(&nthread);
 
   std::vector<uint64_t> qids;
   uint64_t default_max = std::numeric_limits<uint64_t>::max();

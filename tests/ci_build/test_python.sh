@@ -43,14 +43,14 @@ case "$suite" in
   gpu)
     source activate gpu_test
     install_xgboost
-    pytest -v -s -rxXs --fulltrace -m "not mgpu" ${args} tests/python-gpu
+    pytest -v -s -rxXs --fulltrace --durations=0 -m "not mgpu" ${args} tests/python-gpu
     uninstall_xgboost
     ;;
 
   mgpu)
     source activate gpu_test
     install_xgboost
-    pytest -v -s -rxXs --fulltrace -m "mgpu" ${args} tests/python-gpu
+    pytest -v -s -rxXs --fulltrace --durations=0 -m "mgpu" ${args} tests/python-gpu
 
     cd tests/distributed
     ./runtests-gpu.sh
@@ -60,7 +60,7 @@ case "$suite" in
   cpu)
     source activate cpu_test
     install_xgboost
-    pytest -v -s -rxXs --fulltrace ${args} tests/python
+    pytest -v -s -rxXs --fulltrace --durations=0 ${args} tests/python
     cd tests/distributed
     ./runtests.sh
     uninstall_xgboost

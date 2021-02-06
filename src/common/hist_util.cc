@@ -29,8 +29,7 @@
 namespace xgboost {
 namespace common {
 
-void GHistIndexMatrix::ResizeIndex(const size_t rbegin, const SparsePage& batch,
-                                   const size_t n_offsets, const size_t n_index,
+void GHistIndexMatrix::ResizeIndex(const size_t n_index,
                                    const bool isDense) {
   if ((max_num_bins - 1 <= static_cast<int>(std::numeric_limits<uint8_t>::max())) && isDense) {
     index.SetBinTypeSize(kUint8BinsTypeSize);
@@ -119,7 +118,7 @@ void GHistIndexMatrix::Init(DMatrix* p_fmat, int max_bins) {
 
     const size_t n_offsets = cut.Ptrs().size() - 1;
     const size_t n_index = row_ptr[rbegin + batch.Size()];
-    ResizeIndex(rbegin, batch, n_offsets, n_index, isDense);
+    ResizeIndex(n_index, isDense);
 
     CHECK_GT(cut.Values().size(), 0U);
 
@@ -164,7 +163,7 @@ void GHistIndexMatrix::Init(DMatrix* p_fmat, int max_bins) {
     } else {
       common::Span<uint32_t> index_data_span = {index.data<uint32_t>(), n_index};
       SetIndexData(index_data_span, batch_threads, batch, rbegin, nbins,
-                   [](auto idx, auto i) { return idx; });
+                   [](auto idx, auto) { return idx; });
     }
 
     #pragma omp parallel for num_threads(nthread) schedule(static)

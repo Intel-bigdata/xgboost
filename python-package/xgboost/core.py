@@ -1,25 +1,26 @@
 # coding: utf-8
 # pylint: disable=too-many-arguments, too-many-branches, invalid-name
-# pylint: disable=too-many-lines, too-many-locals
+# pylint: disable=too-many-lines, too-many-locals, no-self-use
 """Core XGBoost Library."""
 import collections
 # pylint: disable=no-name-in-module,import-error
 from collections.abc import Mapping
 # pylint: enable=no-name-in-module,import-error
+from typing import Dict, Union, List
 import ctypes
 import os
 import re
 import sys
 import json
 import warnings
+from functools import wraps
+from inspect import signature, Parameter
 
 import numpy as np
 import scipy.sparse
 
-from .compat import (
-    STRING_TYPES, DataFrame, py_str,
-    PANDAS_INSTALLED,
-    os_fspath, os_PathLike, lazy_isinstance)
+from .compat import (STRING_TYPES, DataFrame, py_str, PANDAS_INSTALLED,
+                     lazy_isinstance)
 from .libpath import find_lib_path
 
 # c_bst_ulong corresponds to bst_ulong defined in xgboost/c_api.h
@@ -371,10 +372,62 @@ class DataIter:
         raise NotImplementedError()
 
 
+# Notice for `_deprecate_positional_args`
+# Authors: Olivier Grisel
+#          Gael Varoquaux
+#          Andreas Mueller
+#          Lars Buitinck
+#          Alexandre Gramfort
+#          Nicolas Tresegnie
+#          Sylvain Marie
+# License: BSD 3 clause
+def _deprecate_positional_args(f):
+    """Decorator for methods that issues warnings for positional arguments
+
+    Using the keyword-only argument syntax in pep 3102, arguments after the
+    * will issue a warning when passed as a positional argument.
+
+    Modifed from sklearn utils.validation.
+
+    Parameters
+    ----------
+    f : function
+        function to check arguments on
+    """
+    sig = signature(f)
+    kwonly_args = []
+    all_args = []
+
+    for name, param in sig.parameters.items():
+        if param.kind == Parameter.POSITIONAL_OR_KEYWORD:
+            all_args.append(name)
+        elif param.kind == Parameter.KEYWORD_ONLY:
+            kwonly_args.append(name)
+
+    @wraps(f)
+    def inner_f(*args, **kwargs):
+        extra_args = len(args) - len(all_args)
+        if extra_args > 0:
+            # ignore first 'self' argument for instance methods
+            args_msg = [
+                '{}'.format(name) for name, _ in zip(
+                    kwonly_args[:extra_args], args[-extra_args:])
+            ]
+            warnings.warn(
+                "Pass `{}` as keyword args.  Passing these as positional "
+                "arguments will be considered as error in future releases.".
+                format(", ".join(args_msg)), FutureWarning)
+        for k, arg in zip(sig.parameters, args):
+            kwargs[k] = arg
+        return f(**kwargs)
+
+    return inner_f
+
+
 class DMatrix:                  # pylint: disable=too-many-instance-attributes
     """Data Matrix used in XGBoost.
 
-    DMatrix is a internal data structure that used by XGBoost
+    DMatrix is an internal data structure that is used by XGBoost,
     which is optimized for both memory efficiency and training speed.
     You can construct DMatrix from multiple different sources of data.
     """
@@ -384,7 +437,8 @@ class DMatrix:                  # pylint: disable=too-many-instance-attributes
                  silent=False,
                  feature_names=None,
                  feature_types=None,
-                 nthread=None):
+                 nthread=None,
+                 enable_categorical=False):
         """Parameters
         ----------
         data : os.PathLike/string/numpy.array/scipy.sparse/pd.DataFrame/
@@ -419,6 +473,16 @@ class DMatrix:                  # pylint: disable=too-many-instance-attributes
             Number of threads to use for loading data when parallelization is
             applicable. If -1, uses maximum threads available on the system.
 
+        enable_categorical: boolean, optional
+
+            .. versionadded:: 1.3.0
+
+            Experimental support of specializing for categorical features.  Do
+            not set to True unless you are interested in development.
+            Currently it's only available for `gpu_hist` tree method with 1 vs
+            rest (one hot) categorical split.  Also, JSON serialization format,
+            `gpu_predictor` and pandas input are required.
+
         """
         if isinstance(data, list):
             raise TypeError('Input data can not be a list.')
@@ -437,7 +501,8 @@ class DMatrix:                  # pylint: disable=too-many-instance-attributes
             data, missing=self.missing,
             threads=self.nthread,
             feature_names=feature_names,
-            feature_types=feature_types)
+            feature_types=feature_types,
+            enable_categorical=enable_categorical)
         assert handle is not None
         self.handle = handle
 
@@ -451,7 +516,8 @@ class DMatrix:                  # pylint: disable=too-many-instance-attributes
             _check_call(_LIB.XGDMatrixFree(self.handle))
             self.handle = None
 
-    def set_info(self,
+    @_deprecate_positional_args
+    def set_info(self, *,
                  label=None, weight=None, base_margin=None,
                  group=None,
                  label_lower_bound=None,
@@ -578,7 +644,7 @@ class DMatrix:                  # pylint: disable=too-many-instance-attributes
             If set, the output is suppressed.
         """
         _check_call(_LIB.XGDMatrixSaveBinary(self.handle,
-                                             c_str(os_fspath(fname)),
+                                             c_str(os.fspath(fname)),
                                              ctypes.c_int(silent)))
 
     def set_label(self, label):
@@ -860,7 +926,6 @@ class DeviceQuantileDMatrix(DMatrix):
     You can construct DeviceQuantileDMatrix from cupy/cudf/dlpack.
 
     .. versionadded:: 1.1.0
-
     """
 
     def __init__(self, data, label=None, weight=None,  # pylint: disable=W0231
@@ -935,8 +1000,8 @@ class Booster(object):
             Parameters for boosters.
         cache : list
             List of cache items.
-        model_file : string or os.PathLike
-            Path to the model file.
+        model_file : string/os.PathLike/Booster/bytearray
+            Path to the model file if it's string or PathLike.
         """
         for d in cache:
             if not isinstance(d, DMatrix):
@@ -948,6 +1013,7 @@ class Booster(object):
         _check_call(_LIB.XGBoosterCreate(dmats, c_bst_ulong(len(cache)),
                                          ctypes.byref(self.handle)))
         params = params or {}
+        params = self._configure_metrics(params.copy())
         if isinstance(params, list):
             params.append(('validate_parameters', True))
         else:
@@ -970,12 +1036,23 @@ class Booster(object):
             _check_call(
                 _LIB.XGBoosterUnserializeFromBuffer(self.handle, ptr, length))
             self.__dict__.update(state)
-        elif isinstance(model_file, (STRING_TYPES, os_PathLike, bytearray)):
+        elif isinstance(model_file, (STRING_TYPES, os.PathLike, bytearray)):
             self.load_model(model_file)
         elif model_file is None:
             pass
         else:
             raise TypeError('Unknown type:', model_file)
+
+    def _configure_metrics(self, params: Union[Dict, List]) -> Union[Dict, List]:
+        if isinstance(params, dict) and 'eval_metric' in params \
+           and isinstance(params['eval_metric'], list):
+            params = dict((k, v) for k, v in params.items())
+            eval_metrics = params['eval_metric']
+            params.pop("eval_metric", None)
+            params = list(params.items())
+            for eval_metric in eval_metrics:
+                params += [('eval_metric', eval_metric)]
+        return params
 
     def __del__(self):
         if hasattr(self, 'handle') and self.handle is not None:
@@ -1011,6 +1088,43 @@ class Booster(object):
                 _LIB.XGBoosterUnserializeFromBuffer(handle, ptr, length))
             state['handle'] = handle
         self.__dict__.update(state)
+
+    def __getitem__(self, val):
+        if isinstance(val, int):
+            val = slice(val, val+1)
+        if isinstance(val, tuple):
+            raise ValueError('Only supports slicing through 1 dimension.')
+        if not isinstance(val, slice):
+            msg = _expect((int, slice), type(val))
+            raise TypeError(msg)
+        if isinstance(val.start, type(Ellipsis)) or val.start is None:
+            start = 0
+        else:
+            start = val.start
+        if isinstance(val.stop, type(Ellipsis)) or val.stop is None:
+            stop = 0
+        else:
+            stop = val.stop
+            if stop < start:
+                raise ValueError('Invalid slice', val)
+
+        step = val.step if val.step is not None else 1
+
+        start = ctypes.c_int(start)
+        stop = ctypes.c_int(stop)
+        step = ctypes.c_int(step)
+
+        sliced_handle = ctypes.c_void_p()
+        status = _LIB.XGBoosterSlice(self.handle, start, stop, step,
+                                     ctypes.byref(sliced_handle))
+        if status == -2:
+            raise IndexError('Layer index out of range')
+        _check_call(status)
+
+        sliced = Booster()
+        _check_call(_LIB.XGBoosterFree(sliced.handle))
+        sliced.handle = sliced_handle
+        return sliced
 
     def save_config(self):
         '''Output internal parameter configuration of Booster as a JSON
@@ -1570,11 +1684,11 @@ class Booster(object):
             Output file name
 
         """
-        if isinstance(fname, (STRING_TYPES, os_PathLike)):  # assume file name
+        if isinstance(fname, (STRING_TYPES, os.PathLike)):  # assume file name
             _check_call(_LIB.XGBoosterSaveModel(
-                self.handle, c_str(os_fspath(fname))))
+                self.handle, c_str(os.fspath(fname))))
         else:
-            raise TypeError("fname must be a string or os_PathLike")
+            raise TypeError("fname must be a string or os PathLike")
 
     def save_raw(self):
         """Save the model to a in memory buffer representation instead of file.
@@ -1594,7 +1708,7 @@ class Booster(object):
         """Load the model from a file or bytearray. Path to file can be local
         or as an URI.
 
-        The model is loaded from an XGBoost format which is universal among the
+        The model is loaded from XGBoost format which is universal among the
         various XGBoost interfaces. Auxiliary attributes of the Python Booster
         object (such as feature_names) will not be loaded.  See:
 
@@ -1608,11 +1722,11 @@ class Booster(object):
             Input file name or memory buffer(see also save_raw)
 
         """
-        if isinstance(fname, (STRING_TYPES, os_PathLike)):
+        if isinstance(fname, (STRING_TYPES, os.PathLike)):
             # assume file name, cannot use os.path.exist to check, file can be
             # from URL.
             _check_call(_LIB.XGBoosterLoadModel(
-                self.handle, c_str(os_fspath(fname))))
+                self.handle, c_str(os.fspath(fname))))
         elif isinstance(fname, bytearray):
             buf = fname
             length = c_bst_ulong(len(buf))
@@ -1638,8 +1752,8 @@ class Booster(object):
         dump_format : string, optional
             Format of model dump file. Can be 'text' or 'json'.
         """
-        if isinstance(fout, (STRING_TYPES, os_PathLike)):
-            fout = open(os_fspath(fout), 'w')
+        if isinstance(fout, (STRING_TYPES, os.PathLike)):
+            fout = open(os.fspath(fout), 'w')
             need_close = True
         else:
             need_close = False
@@ -1673,7 +1787,7 @@ class Booster(object):
             Format of model dump. Can be 'text', 'json' or 'dot'.
 
         """
-        fmap = os_fspath(fmap)
+        fmap = os.fspath(fmap)
         length = c_bst_ulong()
         sarr = ctypes.POINTER(ctypes.c_char_p)()
         if self.feature_names is not None and fmap == '':
@@ -1753,7 +1867,7 @@ class Booster(object):
         importance_type: str, default 'weight'
             One of the importance types defined above.
         """
-        fmap = os_fspath(fmap)
+        fmap = os.fspath(fmap)
         if getattr(self, 'booster', None) is not None and self.booster not in {'gbtree', 'dart'}:
             raise ValueError('Feature importance is not defined for Booster type {}'
                              .format(self.booster))
@@ -1846,7 +1960,7 @@ class Booster(object):
            The name of feature map file.
         """
         # pylint: disable=too-many-locals
-        fmap = os_fspath(fmap)
+        fmap = os.fspath(fmap)
         if not PANDAS_INSTALLED:
             raise Exception(('pandas must be available to use this method.'
                              'Install pandas before calling again.'))

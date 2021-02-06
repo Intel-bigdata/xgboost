@@ -1,5 +1,4 @@
 import sys
-import unittest
 import pytest
 
 import numpy as np
@@ -9,6 +8,7 @@ from hypothesis import given, strategies, assume, settings, note
 sys.path.append("tests/python")
 import testing as tm
 from test_predict import run_threaded_predict  # noqa
+from test_predict import run_predict_leaf      # noqa
 
 rng = np.random.RandomState(1994)
 
@@ -16,10 +16,15 @@ shap_parameter_strategy = strategies.fixed_dictionaries({
     'max_depth': strategies.integers(0, 11),
     'max_leaves': strategies.integers(0, 256),
     'num_parallel_tree': strategies.sampled_from([1, 10]),
+}).filter(lambda x: x['max_depth'] > 0 or x['max_leaves'] > 0)
+
+predict_parameter_strategy = strategies.fixed_dictionaries({
+    'max_depth': strategies.integers(1, 8),
+    'num_parallel_tree': strategies.sampled_from([1, 4]),
 })
 
 
-class TestGPUPredict(unittest.TestCase):
+class TestGPUPredict:
     def test_predict(self):
         iterations = 10
         np.random.seed(1)
@@ -194,26 +199,63 @@ class TestGPUPredict(unittest.TestCase):
         for i in range(10):
             run_threaded_predict(X, rows, predict_df)
 
-    @given(strategies.integers(1, 200),
-           tm.dataset_strategy, shap_parameter_strategy, strategies.booleans())
+    @given(strategies.integers(1, 10),
+           tm.dataset_strategy, shap_parameter_strategy)
     @settings(deadline=None)
-    def test_shap(self, num_rounds, dataset, param, all_rows):
-        if param['max_depth'] == 0 and param['max_leaves'] == 0:
-            return
-
+    def test_shap(self, num_rounds, dataset, param):
         param.update({"predictor": "gpu_predictor", "gpu_id": 0})
         param = dataset.set_params(param)
         dmat = dataset.get_dmat()
         bst = xgb.train(param, dmat, num_rounds)
-        if all_rows:
-            test_dmat = xgb.DMatrix(dataset.X, dataset.y, dataset.w, dataset.margin)
-        else:
-            test_dmat = xgb.DMatrix(dataset.X[0:1, :])
+        test_dmat = xgb.DMatrix(dataset.X, dataset.y, dataset.w, dataset.margin)
         shap = bst.predict(test_dmat, pred_contribs=True)
-        bst.set_param({"predictor": "cpu_predictor"})
-        cpu_shap = bst.predict(test_dmat, pred_contribs=True)
         margin = bst.predict(test_dmat, output_margin=True)
-        assert np.allclose(shap, cpu_shap, 1e-3, 1e-3)
-        # feature contributions should add up to predictions
         assume(len(dataset.y) > 0)
         assert np.allclose(np.sum(shap, axis=len(shap.shape) - 1), margin, 1e-3, 1e-3)
+
+    @given(strategies.integers(1, 10),
+           tm.dataset_strategy, shap_parameter_strategy)
+    @settings(deadline=None, max_examples=20)
+    def test_shap_interactions(self, num_rounds, dataset, param):
+        param.update({"predictor": "gpu_predictor", "gpu_id": 0})
+        param = dataset.set_params(param)
+        dmat = dataset.get_dmat()
+        bst = xgb.train(param, dmat, num_rounds)
+        test_dmat = xgb.DMatrix(dataset.X, dataset.y, dataset.w, dataset.margin)
+        shap = bst.predict(test_dmat, pred_interactions=True)
+        margin = bst.predict(test_dmat, output_margin=True)
+        assume(len(dataset.y) > 0)
+        assert np.allclose(np.sum(shap, axis=(len(shap.shape) - 1, len(shap.shape) - 2)),
+                           margin,
+                           1e-3, 1e-3)
+
+    def test_predict_leaf_basic(self):
+        gpu_leaf = run_predict_leaf('gpu_predictor')
+        cpu_leaf = run_predict_leaf('cpu_predictor')
+        np.testing.assert_equal(gpu_leaf, cpu_leaf)
+
+    def run_predict_leaf_booster(self, param, num_rounds, dataset):
+        param = dataset.set_params(param)
+        m = dataset.get_dmat()
+        booster = xgb.train(param, dtrain=dataset.get_dmat(), num_boost_round=num_rounds)
+        booster.set_param({'predictor': 'cpu_predictor'})
+        cpu_leaf = booster.predict(m, pred_leaf=True)
+
+        booster.set_param({'predictor': 'gpu_predictor'})
+        gpu_leaf = booster.predict(m, pred_leaf=True)
+
+        np.testing.assert_equal(cpu_leaf, gpu_leaf)
+
+    @given(predict_parameter_strategy, tm.dataset_strategy)
+    @settings(deadline=None)
+    def test_predict_leaf_gbtree(self, param, dataset):
+        param['booster'] = 'gbtree'
+        param['tree_method'] = 'gpu_hist'
+        self.run_predict_leaf_booster(param, 10, dataset)
+
+    @given(predict_parameter_strategy, tm.dataset_strategy)
+    @settings(deadline=None)
+    def test_predict_leaf_dart(self, param, dataset):
+        param['booster'] = 'dart'
+        param['tree_method'] = 'gpu_hist'
+        self.run_predict_leaf_booster(param, 10, dataset)

@@ -11,13 +11,15 @@
 #include <string>
 
 namespace xgboost {
+
 struct GenericParameter : public XGBoostParameter<GenericParameter> {
   // Constant representing the device ID of CPU.
   static int32_t constexpr kCpuId = -1;
+  static int64_t constexpr kDefaultSeed = 0;
 
  public:
   // stored random seed
-  int64_t seed;
+  int64_t seed { kDefaultSeed };
   // whether seed the PRNG each iteration
   bool seed_per_iteration;
   // number of threads to use if OpenMP is enabled
@@ -25,6 +27,8 @@ struct GenericParameter : public XGBoostParameter<GenericParameter> {
   int nthread;
   // primary device, -1 means no gpu.
   int gpu_id;
+  // fail when gpu_id is invalid
+  bool fail_on_invalid_gpu_id {false};
   // gpu page size in external memory mode, 0 means using the default.
   size_t gpu_page_size;
   bool enable_experimental_json_serialization {true};
@@ -46,7 +50,7 @@ struct GenericParameter : public XGBoostParameter<GenericParameter> {
 
   // declare parameters
   DMLC_DECLARE_PARAMETER(GenericParameter) {
-    DMLC_DECLARE_FIELD(seed).set_default(0).describe(
+    DMLC_DECLARE_FIELD(seed).set_default(kDefaultSeed).describe(
         "Random number seed during training.");
     DMLC_DECLARE_ALIAS(seed, random_state);
     DMLC_DECLARE_FIELD(seed_per_iteration)
@@ -63,6 +67,9 @@ struct GenericParameter : public XGBoostParameter<GenericParameter> {
         .set_default(-1)
         .set_lower_bound(-1)
         .describe("The primary GPU device ordinal.");
+    DMLC_DECLARE_FIELD(fail_on_invalid_gpu_id)
+        .set_default(false)
+        .describe("Fail with error when gpu_id is invalid.");
     DMLC_DECLARE_FIELD(gpu_page_size)
         .set_default(0)
         .set_lower_bound(0)
