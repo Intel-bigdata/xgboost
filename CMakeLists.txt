@@ -156,9 +156,6 @@ endif ()
 message(STATUS "ARROW_HOME: ${ARROW_HOME}")
 find_package(Arrow)
 
-# core xgboost
-add_subdirectory(${xgboost_SOURCE_DIR}/src)
-
 # dmlc-core
 msvc_use_static_runtime()
 add_subdirectory(${xgboost_SOURCE_DIR}/dmlc-core)

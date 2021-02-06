@@ -288,7 +288,7 @@ class DataPool {
 
   void Push(std::shared_ptr<SparsePage> page) {
     info_->num_nonzero_ += page->data.Size();
-    pool_.Push(*page);
+    pool_.Push(*page, 0);
     if (pool_.Size() > page_size_) {
       this->SplitWritePage();
     }

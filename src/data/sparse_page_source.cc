@@ -49,7 +49,7 @@ void DataPool::SplitWritePage() {
     this->Slice(out, offset, total - offset, entry_offset);
     CHECK_NE(out->Size(), 0);
     pool_.Clear();
-    pool_.Push(*out);
+    pool_.Push(*out, 0);
   } else {
     pool_.Clear();
   }
@@ -60,7 +60,7 @@ size_t DataPool::Finalize() {
     std::shared_ptr<SparsePage> page;
     this->writer_->Alloc(&page);
     page->Clear();
-    page->Push(pool_);
+    page->Push(pool_, 0);
     this->writer_->PushWrite(std::move(page));
   }
 
