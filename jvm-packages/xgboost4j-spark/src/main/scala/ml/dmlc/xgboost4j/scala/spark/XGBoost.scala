@@ -504,6 +504,13 @@ object XGBoost extends Serializable {
       val watches = Watches.buildWatchesWithArrowRecordBatchHandles(xgbExecutionParams,
         labelColOffset, width, handles,
         getCacheDirName(xgbExecutionParams.useExternalMemory))
+
+      // Release the Buffer.
+      handles.foreach { handle =>
+        val buffers = handle.getBuffers();
+        buffers.foreach(_.getReferenceManager().release())
+      }
+
       Iterator(watches)
     }).filter( watches => {
         val tomap = watches.toMap
@@ -520,13 +527,6 @@ object XGBoost extends Serializable {
         case t: Throwable =>
           logger.error("building watches failed due to ", t)
           throw new XGBoostError("Building watches failed")
-    } finally {
-     trainingData.foreachPartition{ handles =>
-       handles.foreach { handle =>
-         val buffers = handle.getBuffers();
-         buffers.foreach(_.getReferenceManager().release())
-       }
-     }
     }
 
     if (xgbExecutionParams.isLocal) {
