@@ -126,6 +126,7 @@
                       <nonFilteredFileExtension>dll</nonFilteredFileExtension>
                       <nonFilteredFileExtension>dylib</nonFilteredFileExtension>
                       <nonFilteredFileExtension>so</nonFilteredFileExtension>
+                      <nonFilteredFileExtension>17</nonFilteredFileExtension>
                   </nonFilteredFileExtensions>
               </configuration>
           </plugin>
