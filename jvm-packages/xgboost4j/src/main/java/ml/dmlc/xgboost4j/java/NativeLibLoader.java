@@ -31,13 +31,13 @@ class NativeLibLoader {
 
   private static boolean initialized = false;
   private static final String nativeResourcePath = "/lib/";
-  private static final String[] libNames = new String[]{"arrow.so.17", "xgboost4j"};
+  private static final String[] libNames = new String[]{"libarrow.so.17", "libxgboost4j.so"};
 
   static synchronized void initXGBoost() throws IOException {
     if (!initialized) {
       for (String libName : libNames) {
         try {
-          String libraryFromJar = nativeResourcePath + System.mapLibraryName(libName);
+          String libraryFromJar = nativeResourcePath + libName;
           loadLibraryFromJar(libraryFromJar);
         } catch (IOException ioe) {
           logger.error("failed to load " + libName + " library from jar");
