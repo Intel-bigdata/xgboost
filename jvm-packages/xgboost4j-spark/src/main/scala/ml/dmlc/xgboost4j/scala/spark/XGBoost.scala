@@ -501,12 +501,13 @@ object XGBoost extends Serializable {
       prevBooster: Booster): RDD[(Booster, Map[String, Array[Float]])] = {
 
     val watchRdd = trainingData.mapPartitions(handles => {
+      val batches = handles.toArray
       val watches = Watches.buildWatchesWithArrowRecordBatchHandles(xgbExecutionParams,
-        labelColOffset, width, handles,
+        labelColOffset, width, batches.toIterator,
         getCacheDirName(xgbExecutionParams.useExternalMemory))
 
-      // Release the Buffer.
-      handles.foreach { handle =>
+      println("Start to release arrow buffer.")
+      batches.foreach { handle =>
         val buffers = handle.getBuffers();
         buffers.foreach(_.getReferenceManager().release())
       }
