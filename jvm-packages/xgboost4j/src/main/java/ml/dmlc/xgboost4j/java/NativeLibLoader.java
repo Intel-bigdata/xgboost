@@ -32,7 +32,7 @@ class NativeLibLoader {
 
   private static boolean initialized = false;
   private static final String nativeResourcePath = "/lib/";
-  private static final String[] libNames = new String[]{"libarrow.so.17", "libxgboost4j.so"};
+  private static final String[] libNames = new String[]{"libarrow.so", "libxgboost4j.so"};
 
   static synchronized void initXGBoost() throws IOException {
     if (!initialized) {
@@ -83,6 +83,7 @@ class NativeLibLoader {
 
         System.out.println("lib file " + temp + " size is "+f.length());
 
+        /*
         if(temp.endsWith("libarrow.so"))
         {
           File f17 = new File(temp+".17");
@@ -92,6 +93,7 @@ class NativeLibLoader {
           f.renameTo(f17);
           temp = temp + ".17";
         }
+        */
         System.load(temp);
       } catch (IOException e) {
         e.printStackTrace();

@@ -25,7 +25,7 @@ arrow::Status DMatrixFromParquet(const char* path, std::shared_ptr<xgboost::DMat
   ARROW_RETURN_NOT_OK(arrow_reader->ReadTable(&table));
 
   // table sizes
-  size_t nrow{table->num_rows()}, ncol{table->num_columns()};
+  size_t nrow{static_cast<size_t>(table->num_rows())}, ncol{static_cast<size_t>(table->num_columns())};
 
   // get the label column
   xgboost::data::TableColumn label_col;

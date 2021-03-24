@@ -293,24 +293,27 @@ JNIEXPORT jint JNICALL Java_ml_dmlc_xgboost4j_java_XGBoostJNI_XGDMatrixCreateByR
   int num_cols = 0;
  
   for (auto iter = batches.begin(); iter != batches.end(); iter++) {
-	  std::shared_ptr<arrow::RecordBatch> batch = *iter;
-	  num_rows += batch->num_rows();
-	  num_cols = batch->num_columns() -1;
-	  
-	  std::shared_ptr<arrow::Array> array = batch->column(label_name_offset);
-	  array_vector.push_back(array);
-	  
-	  std::shared_ptr<arrow::RecordBatch> batch_removed;
-	  // ARROW_ASSIGN_OR_RAISE(batch_removed, batch->RemoveColumn(label_name_offset));
-	  batch->RemoveColumn(label_name_offset, &batch_removed);
-	  batches_removed.push_back(batch_removed);
+    std::shared_ptr<arrow::RecordBatch> batch = *iter;
+    num_rows += batch->num_rows();
+    num_cols = batch->num_columns() -1;
+    
+    std::shared_ptr<arrow::Array> array = batch->column(label_name_offset);
+    array_vector.push_back(array);
+    
+    std::shared_ptr<arrow::RecordBatch> batch_removed;
+    // batch->RemoveColumn(label_name_offset, &batch_removed);
+    auto result = batch->RemoveColumn(label_name_offset);
+    if (result.ok()) {
+      batch_removed = result.ValueOrDie();
+      batches_removed.push_back(batch_removed);
+    }
   }
   
   std::shared_ptr<arrow::ChunkedArray> label_col;
   if (array_vector.size() == 0) {
-	 label_col = nullptr;
+    label_col = nullptr;
   } else {
-	 label_col =  std::make_shared<arrow::ChunkedArray>(array_vector);
+    label_col =  std::make_shared<arrow::ChunkedArray>(array_vector);
   }
 
   #if defined(XGBOOST_BUILD_ARROW_SUPPORT)

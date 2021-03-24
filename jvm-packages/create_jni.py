@@ -132,7 +132,7 @@ if __name__ == "__main__":
     maybe_makedirs("xgboost4j/src/main/resources/lib")
     cp("../lib/" + library_name, "xgboost4j/src/main/resources/lib")
     lib_arrow_dir = os.getenv("ARROW_HOME")
-    cp(lib_arrow_dir + "/lib/libarrow.so.17", "xgboost4j/src/main/resources/lib")
+    cp(lib_arrow_dir + "/lib/libarrow.so", "xgboost4j/src/main/resources/lib")
 
     print("copying pure-Python tracker")
     cp("../dmlc-core/tracker/dmlc_tracker/tracker.py",

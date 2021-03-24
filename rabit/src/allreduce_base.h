@@ -560,6 +560,10 @@ class AllreduceBase : public IEngine {
   bool rabit_timeout = false;  // NOLINT
   // Enable TCP node delay
   bool rabit_enable_tcp_no_delay = false;  // NOLINT
+  double last_print=0;
+  double elapsed=0;
+  int callcnt=0;
+  int msg_total_size=0;
 };
 }  // namespace engine
 }  // namespace rabit

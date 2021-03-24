@@ -9,6 +9,7 @@
 #include "rabit/base.h"
 #include "rabit/internal/rabit-inl.h"
 #include "allreduce_base.h"
+#include "dmlc/timer.h"
 
 #ifndef _WIN32
 #include <netinet/tcp.h>
@@ -119,6 +120,7 @@ bool AllreduceBase::Init(int argc, char* argv[]) {
 }
 
 bool AllreduceBase::Shutdown() {
+  std::cout << "xgbtck allreduce " << rank << " " <<  std::setprecision (12) << dmlc::GetTime() << " " << elapsed << " " << callcnt << " " << msg_total_size << std::endl;
   try {
     for (auto & all_link : all_links) {
       if (!all_link.sock.IsClosed()) {
@@ -467,11 +469,29 @@ AllreduceBase::TryAllreduce(void *sendrecvbuf_,
                             size_t type_nbytes,
                             size_t count,
                             ReduceFunction reducer) {
+  double start = dmlc::GetTime();
+  AllreduceBase::ReturnType ret;
   if (count > reduce_ring_mincount) {
-    return this->TryAllreduceRing(sendrecvbuf_, type_nbytes, count, reducer);
+    ret =  this->TryAllreduceRing(sendrecvbuf_, type_nbytes, count, reducer);
   } else {
-    return this->TryAllreduceTree(sendrecvbuf_, type_nbytes, count, reducer);
+    ret =  this->TryAllreduceTree(sendrecvbuf_, type_nbytes, count, reducer);
   }
+   double end = dmlc::GetTime();
+
+  double delta = (end - start);
+
+  elapsed+=delta;
+  msg_total_size+=type_nbytes*count;
+  callcnt++;
+
+  if (end-last_print>1){
+    std::cout << "xgbtck allreduce " << rank << " " <<  std::setprecision (12) << end << " " << elapsed << " " << callcnt << " " << msg_total_size << std::endl;
+    elapsed=0;
+    callcnt=0;
+    msg_total_size=0;
+    last_print=end;
+  }
+  return ret;
 }
 /*!
  * \brief perform in-place allreduce, on sendrecvbuf,
