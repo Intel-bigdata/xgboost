@@ -53,7 +53,7 @@ process from the same environment. The steps are:
 
 .. code-block:: none
 
-  conda install gcc_impl_linux-64=9.3.* maven git cmake -c conda-forge
+  conda install gcc_linux-64=9.3.* maven git cmake -c conda-forge
   git clone https://github.com/Intel-bigdata/xgboost.git -b 5667+5774
   cd xgboost/jvm-packages
   mvn clean package -DskipTests 
