@@ -25,7 +25,17 @@ Build And Install Apache Arrow
   make
   make install
 
-Setting up ARROW_HOME and LD_LIBRARY_PATH environment variables
+Use Pre-built Arrow
+===================================
+Instead of building Apache Arrow from source, alternatively a much easier way is
+to use a pre-built Arrow. For example, the following steps show how to install
+Apache Arrow using conda:
+
+.. code-block:: none
+  conda install pyarrow=3.0.* -c conda-forge
+
+Either building Arrow from source or using a pre-built binary, we need to set up ARROW_HOME and 
+LD_LIBRARY_PATH environment variables before we build XGBoost:
 
 .. code-block:: none
 
@@ -35,8 +45,15 @@ Setting up ARROW_HOME and LD_LIBRARY_PATH environment variables
 Building Java package from XGBoost Source Code
 ================================================
 
+To avoid issues caused by complex dependences and mismatching system
+libraries, the easiest way of building XGBoost is to do it in the same conda environment
+where Arrow is installed (see above). We install essential build tools including
+GCC, cmake, git and Maven in the environment, and then initiate the build
+process from the same environment. The steps are:
+
 .. code-block:: none
 
+  conda install gcc_impl_linux-64=9.3.* maven git cmake -c conda-forge
   git clone https://github.com/Intel-bigdata/xgboost.git -b 5667+5774
   cd xgboost/jvm-packages
   mvn clean package -DskipTests 
