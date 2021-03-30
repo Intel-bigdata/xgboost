@@ -194,6 +194,20 @@ private[spark] trait GeneralParams extends Params {
     allowNonZeroForMissing -> false)
 }
 
+trait HasFeaturesCols extends Params {
+    /**
+     * Columns of features
+     * @group param
+     */
+    final val featuresCols: Param[Seq[String]] = new Param[Seq[String]](this, "featuresCols",
+      "columns of features")
+
+    setDefault(featuresCols, Seq.empty[String])
+
+    /** @group getParam */
+    final def getFeaturesCols: Seq[String] = $(featuresCols)
+}
+
 trait HasLeafPredictionCol extends Params {
   /**
    * Param for leaf prediction column name.

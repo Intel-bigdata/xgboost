@@ -155,6 +155,9 @@ class XGBoostClassifier (
   def setSinglePrecisionHistogram(value: Boolean): this.type =
     set(singlePrecisionHistogram, value)
 
+  def setFeaturesCols(value: Seq[String]): this.type =
+    set(featuresCols, value)
+
   // called at the start of fit/train when 'eval_metric' is not defined
   private def setupDefaultEvalMetric(): String = {
     require(isDefined(objective), "Users must set \'objective\' via xgboostParams.")
@@ -206,7 +209,7 @@ class XGBoostClassifier (
     val (_booster, _metrics) = if (columnar) {
       val (trainingSet: RDD[ArrowRecordBatchHandle], labelColOffset: Int) = DataUtils
         .convertDataFrameToArrowRecordBatchRDDs(
-          col($(labelCol)), $(numWorkers), needDeterministicRepartitioning,
+          col($(labelCol)), $(featuresCols), $(numWorkers), needDeterministicRepartitioning,
           dataset.asInstanceOf[DataFrame]).head
       val derivedXGBParamMap = MLlib2XGBoostParams
       val width = dataset.schema.fields.length
@@ -336,7 +339,7 @@ class XGBoostClassificationModel private[ml](
     val width = dataset.schema.fields.length
     val (trainingSet: RDD[ArrowRecordBatchHandle], labelColOffset: Int) = DataUtils
       .convertDataFrameToArrowRecordBatchRDDs(
-        col($(labelCol)), $(numWorkers), needDeterministicRepartitioning,
+        col($(labelCol)), $(featuresCols), $(numWorkers), needDeterministicRepartitioning,
         dataset.asInstanceOf[DataFrame]).head
 
     val resultRDD = trainingSet.mapPartitions { rowIterator =>

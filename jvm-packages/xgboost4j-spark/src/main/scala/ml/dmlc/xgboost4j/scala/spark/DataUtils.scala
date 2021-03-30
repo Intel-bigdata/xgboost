@@ -161,6 +161,7 @@ object DataUtils extends Serializable {
 
   private[spark] def convertDataFrameToArrowRecordBatchRDDs(
       labelCol: Column,
+      featureNames: Seq[String],
       numWorkers: Int,
       deterministicPartition: Boolean,
       dataFrames: DataFrame*): Array[(RDD[ArrowRecordBatchHandle], Int)] = {
@@ -194,13 +195,18 @@ object DataUtils extends Serializable {
           throw new IllegalArgumentException("clashed label column, aborting")
         }
 
+        val featureNameSet = featureNames.distinct
+        val featureIndices = featureNameSet.map(df.schema.fieldIndex)
+
         val rdd: RDD[ColumnarBatch] = plan.executeColumnar()
         (rdd.map {
           batch => {
             val fields = ListBuffer[ArrowRecordBatchHandle.Field]()
             val buffers = ListBuffer[ArrowRecordBatchHandle.Buffer]()
             val dataTypes = ListBuffer[String]()
-            for (i <- 0 until batch.numCols()) {
+            for (i <- 0 until batch.numCols()
+                 if (featureIndices.isEmpty || featureIndices.contains(i))
+                ) {
               val vector = batch.column(i)
               val accessor = UtilReflection.getField(vector, "accessor")
               val valueVector = UtilReflection.getField(accessor, "accessor")

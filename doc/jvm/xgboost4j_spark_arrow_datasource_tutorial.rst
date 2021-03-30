@@ -25,11 +25,12 @@ Build And Install Apache Arrow
   make
   make install
 
-Setting up ARROW_HOME variable, add the following command to ``~/.bashrc`` file.
+Setting up ARROW_HOME and LD_LIBRARY_PATH environment variables
 
 .. code-block:: none
 
-  export ARROW_HOME=/usr/local
+  export ARROW_HOME=/path/to/arrow/installation
+  export LD_LIBRARY_PATH=$ARROW_HOME:$LD_LIBRARY_PATH
 
 Building Java package from XGBoost Source Code
 ================================================
@@ -37,10 +38,10 @@ Building Java package from XGBoost Source Code
 .. code-block:: none
 
   git clone https://github.com/Intel-bigdata/xgboost.git -b 5667+5774
-  cd arrow/java
-  mvn clean  package -DskipTests -Dmaven.test.skip=true
+  cd xgboost/jvm-packages
+  mvn clean package -DskipTests 
 
-Then you can get the ``xgboost*.jar`` and ``xgboost-spark*.jar`` in ``./xgboost4j-spark/target/xgboost4j-spark_2.12-1.3.0-SNAPSHOT.jar`` and ``./xgboost4j/target/xgboost4j_2.12-1.3.0-SNAPSHOT.jar`` paths.
+Then you can get the ``xgboost*.jar`` and ``xgboost-spark*.jar`` in ``./xgboost4j-spark/target/`` and ``./xgboost4j/target/`` paths.
 
 Download Spark 3.0.0
 ================================================

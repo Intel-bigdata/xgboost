@@ -29,9 +29,9 @@ private[spark] sealed trait XGBoostEstimatorCommon extends GeneralParams with Le
 }
 
 private[spark] trait XGBoostClassifierParams extends HasWeightCol with HasBaseMarginCol
-  with HasNumClass with HasLeafPredictionCol with HasContribPredictionCol
+  with HasNumClass with HasLeafPredictionCol with HasContribPredictionCol with HasFeaturesCols
   with XGBoostEstimatorCommon
 
 private[spark] trait XGBoostRegressorParams extends HasBaseMarginCol with HasWeightCol
-  with HasGroupCol with HasLeafPredictionCol with HasContribPredictionCol
+  with HasGroupCol with HasLeafPredictionCol with HasContribPredictionCol with HasFeaturesCols
   with XGBoostEstimatorCommon
