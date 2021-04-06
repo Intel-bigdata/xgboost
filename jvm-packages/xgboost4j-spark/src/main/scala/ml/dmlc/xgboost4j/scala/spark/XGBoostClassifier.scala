@@ -156,7 +156,7 @@ class XGBoostClassifier (
     set(singlePrecisionHistogram, value)
 
   def setFeaturesCols(value: Seq[String]): this.type =
-    set(featuresCols, value)
+    set(featuresCols, value.toArray)
 
   // called at the start of fit/train when 'eval_metric' is not defined
   private def setupDefaultEvalMetric(): String = {
