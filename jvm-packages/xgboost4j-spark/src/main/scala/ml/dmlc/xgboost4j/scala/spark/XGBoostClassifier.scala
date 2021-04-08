@@ -171,6 +171,7 @@ class XGBoostClassifier (
   }
 
   override def fit(dataset: Dataset[_]): XGBoostClassificationModel = {
+    /*
     val columnar = dataset.sqlContext
       .getConf("xgboost.spark.arrow.optimization.enabled", "False").toBoolean
     if (columnar) {
@@ -178,6 +179,8 @@ class XGBoostClassifier (
     } else {
       super.fit(dataset)
     }
+    */
+    copyValues(train(dataset, columnar = true).setParent(this))
   }
 
   override protected def train(dataset: Dataset[_]): XGBoostClassificationModel
@@ -193,7 +196,11 @@ class XGBoostClassifier (
       set(objectiveType, "classification")
     }
 
-    val _numClasses = getNumClasses(dataset)
+    val _numClasses = getNumClasses{
+      if (dataset.select($(labelCol)).dtypes.head._2 != "DoubleType") {
+        dataset.withColumn($(labelCol), col($(labelCol)).cast(DoubleType))
+      } else dataset
+    }
     if (isDefined(numClass) && $(numClass) != _numClasses) {
       throw new Exception("The number of classes in dataset doesn't match " +
         "\'num_class\' in xgboost params.")
@@ -583,6 +590,7 @@ class XGBoostClassificationModel private[ml](
         s" numClasses=$numClasses, but thresholds has length ${$(thresholds).length}")
     }
 
+    /*
     val columnar = dataset.sqlContext
       .getConf("xgboost.spark.arrow.optimization.enabled", "False").toBoolean
     // Output selected columns only.
@@ -593,6 +601,8 @@ class XGBoostClassificationModel private[ml](
       transformSchema(dataset.schema, logging = true)
       transformInternal(dataset)
     }
+    */
+    var outputData = transformInternalWithArrow(dataset)
     var numColsOutput = 0
 
     val rawPredictionUDF = udf { rawPrediction: mutable.WrappedArray[Float] =>
