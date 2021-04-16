@@ -171,16 +171,20 @@ class XGBoostClassifier (
   }
 
   override def fit(dataset: Dataset[_]): XGBoostClassificationModel = {
-    /*
-    val columnar = dataset.sqlContext
-      .getConf("xgboost.spark.arrow.optimization.enabled", "False").toBoolean
+    val columnar = if (!$(featuresCols).isEmpty || !dataset.columns.contains(getFeaturesCol)
+                        || !dataset.schema(getFeaturesCol).dataType.typeName.startsWith("vector")) {
+                      true
+                   } else false
     if (columnar) {
+      val task_cpus = dataset.sqlContext.getConf("spark.task.cpus", "1").toInt
+      if (task_cpus > 1) {
+        this.logWarning(s"spark.task.cpus value should be set to 1, instead of $task_cpus " +
+          "to avoid compute resource oversubscription.")
+      }
       copyValues(train(dataset, columnar = true).setParent(this))
     } else {
       super.fit(dataset)
     }
-    */
-    copyValues(train(dataset, columnar = true).setParent(this))
   }
 
   override protected def train(dataset: Dataset[_]): XGBoostClassificationModel
@@ -590,19 +594,16 @@ class XGBoostClassificationModel private[ml](
         s" numClasses=$numClasses, but thresholds has length ${$(thresholds).length}")
     }
 
-    /*
-    val columnar = dataset.sqlContext
-      .getConf("xgboost.spark.arrow.optimization.enabled", "False").toBoolean
-    // Output selected columns only.
-    // This is a bit complicated since it tries to avoid repeated computation.
+    val columnar = if (!$(featuresCols).isEmpty || !dataset.columns.contains(getFeaturesCol)
+                        || !dataset.schema(getFeaturesCol).dataType.typeName.startsWith("vector")) {
+                    true
+                   } else false
     var outputData = if (columnar) {
       transformInternalWithArrow(dataset)
     } else {
       transformSchema(dataset.schema, logging = true)
       transformInternal(dataset)
     }
-    */
-    var outputData = transformInternalWithArrow(dataset)
     var numColsOutput = 0
 
     val rawPredictionUDF = udf { rawPrediction: mutable.WrappedArray[Float] =>
