@@ -9,7 +9,7 @@ Prerequisites
 
 Build Arrow Datasource Jar
 ===================================
-You can refer `Unified Arrow Data Source <https://github.com/Intel-bigdata/OAP/blob/master/oap-data-source/arrow/README.md>`_  to compile the spark-arrow-datasource*.jar.
+You can refer to `Unified Arrow Data Source <https://github.com/Intel-bigdata/OAP/blob/master/oap-data-source/arrow/README.md>`_  to compile the spark-arrow-datasource*.jar.
 
 Build And Install Apache Arrow
 ===================================
@@ -54,7 +54,7 @@ process from the same environment. The steps are:
 .. code-block:: none
 
   conda install gcc_linux-64=9.3.* maven git cmake -c conda-forge
-  git clone https://github.com/Intel-bigdata/xgboost.git -b 5667+5774
+  git clone https://github.com/Intel-bigdata/xgboost.git -b arrow-to-dmatrix
   cd xgboost/jvm-packages
   mvn clean package -DskipTests 
 
@@ -62,7 +62,7 @@ Then you can get the ``xgboost*.jar`` and ``xgboost-spark*.jar`` in ``./xgboost4
 
 Download Spark 3.0.0
 ================================================
-Currently xgboost spark with arrow datasource optimization works on the Spark 3.0.0 version.
+Currently xgboost spark with Arrow datasource optimization works on the Spark 3.0.0 version.
 
 .. code-block:: none
 
@@ -74,7 +74,7 @@ Currently xgboost spark with arrow datasource optimization works on the Spark 3.
 ********************************************
 Get Started
 ********************************************
-You can refer `Unified Arrow Data Source <https://github.com/Intel-bigdata/OAP/blob/master/oap-data-source/arrow/README.md>`_  to deploy the ``spark-arrow-datasource*.jar``. And the deploy approach of the ``xgboost*.jar`` and ``xgboost-spark*.jar`` is same with the upstream XGBoost without any additional operations.
+The `notebook <https://github.com/Intel-bigdata/Solution_navigator/xgboost/xgboost-example.ipynb>` walks through the basics of using the Arrow datasource optimization.
 
 ********************************************
 Note
