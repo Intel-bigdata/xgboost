@@ -94,7 +94,7 @@ Performance
 ********************************************
 The performance Compared to upstream xgboost
 
-![Performance](./doc/jvm/image/performance.png)
+![Performance](./images/performance.png)
 
 ********************************************
 Note
