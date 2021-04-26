@@ -21,7 +21,7 @@ Build And Install Apache Arrow
   cd arrow/cpp
   mkdir build
   cd build
-  cmake -DCMAKE_BUILD_TYPE=Release -DARROW_DEPENDENCY_SOURCE=BUNDLED -DARROW_PARQUET=ON -DARROW_HDFS=ON -DARROW_BOOST_USE_SHARED=ON -DARROW_JNI=ON -DARROW_WITH_SNAPPY=ON -DARROW_WITH_PROTOBUF=ON -DARROW_DATASET=ON ..
+  cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX -DARROW_DEPENDENCY_SOURCE=BUNDLED -DARROW_PARQUET=ON -DARROW_HDFS=ON -DARROW_BOOST_USE_SHARED=ON -DARROW_JNI=ON -DARROW_WITH_SNAPPY=ON -DARROW_WITH_PROTOBUF=ON -DARROW_DATASET=ON ..
   make
   make install
 
@@ -39,7 +39,7 @@ LD_LIBRARY_PATH environment variables before we build XGBoost:
 
 .. code-block:: none
 
-  export ARROW_HOME=/path/to/arrow/installation
+  export ARROW_HOME=/path/to/arrow/installation  #like $CONDA_PREFIX
   export LD_LIBRARY_PATH=$ARROW_HOME:$LD_LIBRARY_PATH
 
 Building Java package from XGBoost Source Code
