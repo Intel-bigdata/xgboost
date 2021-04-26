@@ -68,5 +68,6 @@ The sponsors in this list are donating cloud hours in lieu of cash donation.
 
 <a href="https://aws.amazon.com/" target="_blank"><img src="https://raw.githubusercontent.com/xgboost-ai/xgboost-ai.github.io/master/images/sponsors/aws.png" alt="Amazon Web Services" width="72" height="72"></a>
 
-## Our optimization
+Our optimization
+-------
 We completed some optimizations and haven't yet upstream. You may refer to [optimizations](doc/jvm/xgboost4j_spark_arrow_datasource_tutorial.rst)
