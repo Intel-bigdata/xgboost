@@ -6,7 +6,7 @@ XGBoost4J-Spark With Arrow Datasource Tutorial
 ********************************************
 Prerequisites
 ********************************************
-The optimization depends on Apache Arrow 3.0 and Arrow data source in OAP 1.1 release. Arrow data source is part of Spark's native SQL engine plugin developped by Intel big-data team. Native SQL engine is realsed as part of OAP project. But to enable the optimization you don't need to build or install full OAP packages or Native SQL engine packages. Just the Arrow data source plugin is enough. 
+The optimization depends on Apache Arrow 3.0 and Arrow data source in OAP 1.1 release. Arrow data source is part of Spark's native SQL engine plugin developped by Intel. Native SQL engine is realsed as part of OAP project. But to enable the optimization you don't need to build or install full OAP packages or Native SQL engine packages. Just the Arrow data source plugin is enough. 
 
 You can find more infomation from `OAP project <https://github.com/oap-project>`_ and `Native SQL Engine project <https://github.com/oap-project/native-sql-engine>`_
 
