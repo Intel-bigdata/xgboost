@@ -247,6 +247,8 @@ class JRecordBatchReader : public arrow::RecordBatchReader {
         } else if (strcmp(raw_string, "double") == 0){
           arrow_field = std::make_shared<arrow::Field>("v" + std::to_string(i), arrow::float64());
           array_data = arrow::ArrayData::Make(arrow::float64(), num_rows , data);
+        } else {
+          jenv_->ThrowNew(jenv_->FindClass("java/lang/Exception"), " data type should be float or double ");
         }
 
 		    arrow_fields.push_back(arrow_field);
