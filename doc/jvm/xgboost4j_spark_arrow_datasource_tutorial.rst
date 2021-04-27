@@ -74,9 +74,11 @@ Currently xgboost spark with Arrow datasource optimization works on the Spark 3.
 ********************************************
 Get Started
 ********************************************
-The `notebook <https://github.com/Intel-bigdata/Solution_navigator/xgboost/xgboost-example.ipynb>` walks through the basics of using the Arrow datasource optimization.
+The `notebook <https://github.com/oap-project/solution-navigator/xgboost/xgboost-example.ipynb>` walks through the basics of using the Arrow datasource optimization and the limitations
 
 ********************************************
 Note
 ********************************************
-You don't need to use the ``VectorAssembler`` to assemble ``feature`` columns before training. Currently this optimization doesn't support ``limit``, ``coalesce`` and other sql operators, and we will support more operators in the future.
+You don't need to use the ``VectorAssembler`` to assemble ``feature`` columns before training. 
+Parquet's data type must be float or double. The optimization doesn't support other data type yet.
+Currently this optimization doesn't support ``limit``, ``coalesce`` and other sql operators, and we will support more operators in the future.
