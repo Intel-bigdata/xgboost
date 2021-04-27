@@ -34,8 +34,8 @@ Build And Install Apache Arrow
   cd arrow/cpp
   mkdir build
   cd build
-  cmake -DCMAKE_BUILD_TYPE=Release -DARROW_DEPENDENCY_SOURCE=BUNDLED -DARROW_PARQUET=ON -DARROW_HDFS=ON -DARROW_BOOST_USE_SHARED=ON -DARROW_JNI=ON -DARROW_WITH_SNAPPY=ON -DARROW_WITH_PROTOBUF=ON -DARROW_DATASET=ON ..
-  make -j
+  cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX -DARROW_DEPENDENCY_SOURCE=BUNDLED -DARROW_PARQUET=ON -DARROW_HDFS=ON -DARROW_BOOST_USE_SHARED=ON -DARROW_JNI=ON -DARROW_WITH_SNAPPY=ON -DARROW_WITH_PROTOBUF=ON -DARROW_DATASET=ON ..
+  make
   make install
 
 Use Pre-built Arrow
@@ -52,7 +52,7 @@ LD_LIBRARY_PATH environment variables before we build XGBoost:
 
 .. code-block:: none
 
-  export ARROW_HOME=/path/to/arrow/installation
+  export ARROW_HOME=/path/to/arrow/installation  #like $CONDA_PREFIX
   export LD_LIBRARY_PATH=$ARROW_HOME:$LD_LIBRARY_PATH
 
 Building Java package from XGBoost Source Code
@@ -87,7 +87,7 @@ Currently xgboost spark with Arrow datasource optimization works on the Spark 3.
 ********************************************
 Get Started
 ********************************************
-The `notebook <https://github.com/Intel-bigdata/Solution_navigator/xgboost/xgboost-example.ipynb>` walks through the basics of using the Arrow datasource optimization.
+The `notebook <https://github.com/oap-project/solution-navigator/xgboost/xgboost-example.ipynb>` walks through the basics of using the Arrow datasource optimization and the limitations
 
 ********************************************
 Performance
@@ -99,4 +99,6 @@ The performance Compared to upstream xgboost
 ********************************************
 Note
 ********************************************
-You don't need to use the ``VectorAssembler`` to assemble ``feature`` columns before training. Currently this optimization doesn't support ``limit``, ``coalesce`` and other sql operators, and we will support more operators in the future.
+You don't need to use the ``VectorAssembler`` to assemble ``feature`` columns before training. 
+Parquet's data type must be float or double. The optimization doesn't support other data type yet.
+Currently this optimization doesn't support ``limit``, ``coalesce`` and other sql operators, and we will support more operators in the future.
