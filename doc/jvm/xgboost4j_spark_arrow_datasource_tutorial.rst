@@ -6,18 +6,31 @@ XGBoost4J-Spark With Arrow Datasource Tutorial
 ********************************************
 Prerequisites
 ********************************************
+The optimization depends on Apache Arrow 3.0 and Arrow data source in OAP 1.1 release. Arrow data source is part of Spark's native SQL engine plugin developped by Intel. Native SQL engine is realsed as part of OAP project. But to enable the optimization you don't need to build or install full OAP packages or Native SQL engine packages. Just the Arrow data source plugin is enough. 
+
+You can find more infomation from `OAP project <https://github.com/oap-project>`_ and `Native SQL Engine project <https://github.com/oap-project/native-sql-engine>`_
+
+The optimization and OAP 1.1 works Spark 3.0.0. 
+
+Install Pre-built Arrow Data Source Plugin
+===================================
+The easiest way is to download the pre-built arrow data source plugin from `maven <https://repo1.maven.org/maven2/com/intel/oap/spark-arrow-datasource/1.1.0/>`_
 
 Build Arrow Datasource Jar
 ===================================
-You can refer to `Unified Arrow Data Source <https://github.com/Intel-bigdata/OAP/blob/master/oap-data-source/arrow/README.md>`_  to compile the spark-arrow-datasource*.jar.
+Or you may build the arrow data source by yourself. You may refer to `Unified Arrow Data Source <https://github.com/oap-project/native-sql-engine/blob/master/arrow-data-source/README.md>`_  to compile the spark-arrow-datasource*.jar. Be sure to switch to branch branch-1.1-spark-3.1.1.
 
 Build And Install Apache Arrow
 ===================================
-
 .. code-block:: none
 
   // build arrow-cpp
-  git clone --branch native-sql-engine-clean https://github.com/Intel-bigdata/arrow.git
+  git clone --branch native-sql-engine-clean https://github.com/oap-project/arrow.git
+  conda create -y -n arrow3.0_dev -c conda-forge --file arrow/ci/conda_env_unix.yml --file arrow/ci/conda_env_cpp.yml --file arrow/ci/conda_env_python.yml --file arrow/ci/conda_env_gandiva.yml compilers python=3.7 pandas
+  conda activate arrow3.0_dev
+  export PATH=$CONDA_PREFIX/bin:$PATH
+  cd arrow
+  git checkout arrow-3.0.0-oap-1.1
   cd arrow/cpp
   mkdir build
   cd build
@@ -75,6 +88,13 @@ Currently xgboost spark with Arrow datasource optimization works on the Spark 3.
 Get Started
 ********************************************
 The `notebook <https://github.com/oap-project/solution-navigator/xgboost/xgboost-example.ipynb>` walks through the basics of using the Arrow datasource optimization and the limitations
+
+********************************************
+Performance
+********************************************
+The performance Compared to upstream xgboost
+
+.. image:: ./images/performance.png
 
 ********************************************
 Note
