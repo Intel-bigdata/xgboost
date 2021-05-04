@@ -87,7 +87,7 @@ Currently xgboost spark with Arrow datasource optimization works on the Spark 3.
 ********************************************
 Get Started
 ********************************************
-The `notebook <https://github.com/oap-project/solution-navigator/xgboost/xgboost-example.ipynb>` walks through the basics of using the Arrow datasource optimization and the limitations
+The `notebook <https://github.com/oap-project/solution-navigator/blob/master/xgboost/xgboost-example.ipynb>` walks through the basics of using the Arrow datasource optimization and the limitations
 
 ********************************************
 Performance
