@@ -150,11 +150,13 @@ if (USE_OPENMP)
 endif (USE_OPENMP)
 
 # Detect Pyarrow installation
+find_package(Python3 COMPONENTS Interpreter Development)
 if (NOT ARROW_HOME)
   message(FATAL_ERROR "ARROW_HOME not set")
 endif ()
 message(STATUS "ARROW_HOME: ${ARROW_HOME}")
 find_package(Arrow)
+find_package(ArrowPython)
 
 # dmlc-core
 msvc_use_static_runtime()
@@ -163,14 +165,14 @@ set_target_properties(dmlc PROPERTIES
   CXX_STANDARD 14
   CXX_STANDARD_REQUIRED ON
   POSITION_INDEPENDENT_CODE ON)
-if (ARROW_FOUND)
+if (ARROW_FOUND AND ARROW_PYTHON_FOUND)
   target_compile_definitions(dmlc PRIVATE
                              -D_GLIBCXX_USE_CXX11_ABI=1)
   if (TARGET dmlc_unit_tests)
     target_compile_definitions(dmlc_unit_tests PRIVATE
                                -D_GLIBCXX_USE_CXX11_ABI=1)
   endif (TARGET dmlc_unit_tests)
-endif (ARROW_FOUND)
+endif (ARROW_FOUND AND ARROW_PYTHON_FOUND)
 if (MSVC)
   target_compile_options(dmlc PRIVATE
                          -D_CRT_SECURE_NO_WARNINGS -D_CRT_SECURE_NO_DEPRECATE)
@@ -232,10 +234,10 @@ endif (JVM_BINDINGS)
 add_executable(runxgboost ${xgboost_SOURCE_DIR}/src/cli_main.cc)
 target_link_libraries(runxgboost PRIVATE objxgboost)
 
-if (ARROW_FOUND)
+if (ARROW_FOUND AND ARROW_PYTHON_FOUND)
   target_compile_definitions(runxgboost PRIVATE
                     -D_GLIBCXX_USE_CXX11_ABI=1)
-endif (ARROW_FOUND)
+endif (ARROW_FOUND AND ARROW_PYTHON_FOUND)
 
 if (USE_NVTX)
   enable_nvtx(runxgboost)
@@ -254,7 +256,7 @@ set_target_properties(
 #-- End CLI for xgboost
 
 #-- arrow-test
-if (ARROW_FOUND)
+if (ARROW_FOUND AND ARROW_PYTHON_FOUND)
   find_package(Parquet REQUIRED)
   add_executable(arrow-test ${xgboost_SOURCE_DIR}/src/arrow-test.cc)
   target_compile_definitions(arrow-test PRIVATE
@@ -273,7 +275,7 @@ if (ARROW_FOUND)
   set_output_directory(arrow-test ${xgboost_SOURCE_DIR})
   add_dependencies(xgboost arrow-test)
   add_dependencies(runxgboost arrow-test)
-endif (ARROW_FOUND)
+endif (ARROW_FOUND AND ARROW_PYTHON_FOUND)
 #-- arrow-test
 
 set_output_directory(runxgboost ${xgboost_SOURCE_DIR})

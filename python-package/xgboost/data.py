@@ -344,22 +344,22 @@ def _from_dt_df(data, missing, nthread, feature_names, feature_types):
     return handle, feature_names, feature_types
 
 
-# def _is_arrow_table(data):
-#     return lazy_isinstance(data, 'pyarrow.lib', 'Table')
+def _is_arrow_table(data):
+    return lazy_isinstance(data, 'pyarrow.lib', 'Table')
 
 
-# def _from_arrow_table(data, missing, nthread, feature_names, feature_types):
-#     nthread = -1
-#     handle = ctypes.c_void_p()
-#     _check_call(_LIB.XGDMatrixCreateFromArrowTable(
-#         ctypes.py_object(data),
-#         c_bst_ulong(data.num_rows),
-#         c_bst_ulong(data.num_columns),
-#         c_str(''),
-#         ctypes.c_float(missing),
-#         ctypes.byref(handle),
-#         ctypes.c_int(nthread)))
-#     return handle, feature_names, feature_types
+def _from_arrow_table(data, missing, nthread, feature_names, feature_types):
+    nthread = -1
+    handle = ctypes.c_void_p()
+    _check_call(_LIB.XGDMatrixCreateFromArrowTable(
+        ctypes.py_object(data),
+        c_bst_ulong(data.num_rows),
+        c_bst_ulong(data.num_columns),
+        c_str(''),
+        ctypes.c_float(missing),
+        ctypes.byref(handle),
+        ctypes.c_int(nthread)))
+    return handle, feature_names, feature_types
 
 
 def _is_cudf_df(data):
@@ -585,8 +585,8 @@ def dispatch_data_backend(data, missing, threads,
     if _is_modin_series(data):
         return _from_pandas_series(data, missing, threads, feature_names,
                                    feature_types)
-#    if _is_arrow_table(data):
-#        return _from_arrow_table(data, missing, threads, feature_names,
+    if _is_arrow_table(data):
+        return _from_arrow_table(data, missing, threads, feature_names,
                                  feature_types)
     if _has_array_protocol(data):
         pass

@@ -17,11 +17,9 @@
 #include <stdint.h>
 #endif  // __cplusplus
 
-/*
 #if defined(XGBOOST_BUILD_ARROW_SUPPORT)
 #include <arrow/python/pyarrow.h>
 #endif
-*/
 
 #if defined(_MSC_VER) || defined(_WIN32)
 #define XGB_DLL XGB_EXTERN_C __declspec(dllexport)
@@ -353,7 +351,6 @@ XGB_DLL int XGDeviceQuantileDMatrixSetDataCudaColumnar(
  * \param nthread number of threads (up to maximum cores available, if <=0 use all cores)
  * \return 0 when success, -1 when failure happens
  */
-/*
 #if defined(XGBOOST_BUILD_ARROW_SUPPORT)
 XGB_DLL int XGDMatrixCreateFromArrowTable(PyObject* data,
                                           bst_ulong nrow,
@@ -363,7 +360,6 @@ XGB_DLL int XGDMatrixCreateFromArrowTable(PyObject* data,
                                           DMatrixHandle* out,
                                           int nthread);
 #endif
-*/
 /*!
  * \brief create a new dmatrix from sliced content of existing matrix
  * \param handle instance of data matrix to be sliced
