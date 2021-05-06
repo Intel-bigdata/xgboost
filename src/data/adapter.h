@@ -335,8 +335,6 @@ class ArrowAdapterBatch {
       std::transform(chunk_lengths.begin(), chunk_lengths.end(),
                 std::back_inserter(chunk_offsets),
                 [&k](size_t len) { size_t ret = k; k += len; return ret; });
-
-      nthreads = (nthreads <= 0) ? omp_get_max_threads() : nthreads;
 #pragma omp parallel for num_threads(nthreads)
       for (auto i = 0; i < arrs.size(); ++i) {
         auto ptr = CastArray<arrow::FloatType>(arrs[i], 0, false)->raw_values();

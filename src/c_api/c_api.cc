@@ -204,6 +204,7 @@ XGB_DLL int XGDMatrixCreateFromDT(void** data, const char** feature_stypes,
   API_END();
 }
 
+/*
 #if defined(XGBOOST_BUILD_ARROW_SUPPORT)
 XGB_DLL int XGDMatrixCreateFromArrowTable(PyObject* data,
                                           bst_ulong nrow,
@@ -240,12 +241,13 @@ XGB_DLL int XGDMatrixCreateFromArrowTable(PyObject* data,
   arrow::TableBatchReader treader{*table};
   data::RecordBatches rb;
   CHECK(treader.ReadAll(&rb).ok());
-  data::ArrowAdapter adapter(rb, label_col, nrow, ncol, -1);
+  data::ArrowAdapter adapter(rb, label_col, nrow, ncol);
   *out = new std::shared_ptr<DMatrix>(
       DMatrix::Create(&adapter, missing, nthread));
   API_END();
 }
 #endif
+*/
 
 XGB_DLL int XGDMatrixSliceDMatrix(DMatrixHandle handle,
                                   const int* idxset,

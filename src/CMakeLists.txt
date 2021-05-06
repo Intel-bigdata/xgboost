@@ -1,8 +1,8 @@
 file(GLOB_RECURSE CPU_SOURCES *.cc *.h)
 list(REMOVE_ITEM CPU_SOURCES ${xgboost_SOURCE_DIR}/src/cli_main.cc)
-if (ARROW_FOUND AND ARROW_PYTHON_FOUND)
+if (ARROW_FOUND)
   list(REMOVE_ITEM CPU_SOURCES ${xgboost_SOURCE_DIR}/src/arrow-test.cc)
-endif (ARROW_FOUND AND ARROW_PYTHON_FOUND)
+endif (ARROW_FOUND)
 
 #-- Object library
 # Object library is necessary for jvm-package, which creates its own shared library.
@@ -73,19 +73,15 @@ if (XGBOOST_BUILTIN_PREFETCH_PRESENT)
     -DXGBOOST_BUILTIN_PREFETCH_PRESENT=1)
 endif (XGBOOST_BUILTIN_PREFETCH_PRESENT)
 
-if (ARROW_FOUND AND ARROW_PYTHON_FOUND)
+if (ARROW_FOUND)
   target_include_directories(objxgboost PRIVATE
-                              ${ARROW_INCLUDE_DIR}
-                              ${ARROW_PYTHON_INCLUDE_DIR}
-                              ${Python3_INCLUDE_DIRS})
+                              ${ARROW_INCLUDE_DIR})
   target_compile_definitions(objxgboost PRIVATE
                     -DXGBOOST_BUILD_ARROW_SUPPORT=1
                     -D_GLIBCXX_USE_CXX11_ABI=1)
   target_link_libraries(objxgboost PUBLIC
-                        ${ARROW_SHARED_LIB}
-                        ${ARROW_PYTHON_SHARED_LIB}
-                        ${Python3_LIBRARIES})
-endif (ARROW_FOUND AND ARROW_PYTHON_FOUND)
+                        ${ARROW_SHARED_LIB})
+endif (ARROW_FOUND)
 
 find_package(Threads REQUIRED)
 target_link_libraries(objxgboost PUBLIC Threads::Threads ${CMAKE_THREAD_LIBS_INIT})

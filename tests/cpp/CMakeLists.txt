@@ -7,10 +7,10 @@ else (USE_DMLC_GTEST)
   find_package(GTest REQUIRED)
 endif (USE_DMLC_GTEST)
 
-if (ARROW_FOUND AND ARROW_PYTHON_FOUND)
+if (ARROW_FOUND)
   target_compile_definitions(gtest PRIVATE
                     -D_GLIBCXX_USE_CXX11_ABI=1)
-endif (ARROW_FOUND AND ARROW_PYTHON_FOUND)
+endif (ARROW_FOUND)
 
 file(GLOB_RECURSE TEST_SOURCES "*.cc")
 
@@ -27,10 +27,10 @@ endif (NOT PLUGIN_UPDATER_ONEAPI)
 add_executable(testxgboost ${TEST_SOURCES}
   ${xgboost_SOURCE_DIR}/plugin/example/custom_obj.cc)
 
-if (ARROW_FOUND AND ARROW_PYTHON_FOUND)
+if (ARROW_FOUND)
   target_compile_definitions(testxgboost PRIVATE
                     -D_GLIBCXX_USE_CXX11_ABI=1)
-endif (ARROW_FOUND AND ARROW_PYTHON_FOUND)
+endif (ARROW_FOUND)
 target_link_libraries(testxgboost PRIVATE objxgboost)
 
 if (USE_CUDA)
