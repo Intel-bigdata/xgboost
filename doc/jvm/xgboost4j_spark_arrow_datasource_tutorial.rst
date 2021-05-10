@@ -100,5 +100,8 @@ The performance Compared to upstream xgboost
 Note
 ********************************************
 You don't need to use the ``VectorAssembler`` to assemble ``feature`` columns before training. 
-Parquet's data type must be float or double. The optimization doesn't support other data type yet.
-Currently this optimization doesn't support ``limit``, ``coalesce`` and other sql operators, and we will support more operators in the future.
+
+.. note:: Limitations
+  1. Dataframes created with this solution don't support ``limit``, ``coalesce`` and other SQL operators.
+  2. Regression is not supported.
+  3. Ranking tasks are not supported.
