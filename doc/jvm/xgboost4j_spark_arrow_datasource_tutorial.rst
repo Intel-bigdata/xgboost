@@ -18,7 +18,7 @@ The easiest way is to download the pre-built arrow data source plugin from `mave
 
 Build Arrow Datasource Jar
 ===================================
-Or you may build the arrow data source by yourself. You may refer to `Unified Arrow Data Source <https://github.com/oap-project/native-sql-engine/blob/master/arrow-data-source/README.md>`_  to compile the spark-arrow-datasource*.jar. Be sure to switch to branch branch-1.1-spark-3.1.1.
+Or you may build the arrow data source by yourself. You may refer to `Unified Arrow Data Source <https://github.com/oap-project/native-sql-engine/blob/master/arrow-data-source/README.md>`_  to compile the spark-arrow-datasource*.jar. Be sure to switch to branch branch-1.1-spark-3.x.
 
 Build And Install Apache Arrow
 ===================================
