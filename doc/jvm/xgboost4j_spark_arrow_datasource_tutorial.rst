@@ -99,6 +99,7 @@ The performance Compared to upstream xgboost
 ********************************************
 Note
 ********************************************
-You don't need to use the ``VectorAssembler`` to assemble ``feature`` columns before training. 
-Parquet's data type must be float or double. The optimization doesn't support other data type yet.
-Currently this optimization doesn't support ``limit``, ``coalesce`` and other sql operators, and we will support more operators in the future.
+ | The optimization convert Arrow data format to DMatrix directly, so you don't need to use the ``VectorAssembler`` to assemble ``feature`` columns before training. 
+ | Parquet's data type must be float or double. The optimization doesn't support other data type yet.
+ | We still don't support null bit array so the table shouldn't have NULL value. The missing parameter either doesn't work. You need to fillna(missing) in ETL. 
+ | Currently this optimization doesn't support ``limit``, ``coalesce`` and other sql operators. We have Native SQL engine project to process the operators natively. Here we only use arrow data source to get the arrow data and convert to DMatrix directly. All other SQL operations should be handled in ETL. 
