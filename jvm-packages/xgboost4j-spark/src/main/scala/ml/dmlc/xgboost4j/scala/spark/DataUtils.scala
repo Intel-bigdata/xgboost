@@ -195,6 +195,7 @@ object DataUtils extends Serializable {
           throw new IllegalArgumentException("clashed label column, aborting")
         }
 
+        val labelColIndex = labelArray(0)._2
         val featureNameSet = featureNames.distinct
         val featureIndices = featureNameSet.map(df.schema.fieldIndex)
 
@@ -205,7 +206,7 @@ object DataUtils extends Serializable {
             val buffers = ListBuffer[ArrowRecordBatchHandle.Buffer]()
             val dataTypes = ListBuffer[String]()
             for (i <- 0 until batch.numCols()
-                 if (featureIndices.isEmpty || featureIndices.contains(i))
+                 if (i == labelColIndex || featureIndices.isEmpty || featureIndices.contains(i))
                 ) {
               val vector = batch.column(i)
               val accessor = UtilReflection.getField(vector, "accessor")
@@ -226,7 +227,7 @@ object DataUtils extends Serializable {
             new ArrowRecordBatchHandle(batch.numRows(), dataTypes.toArray,
               fields.toArray, buffers.toArray, batch)
           }
-        }, labelArray(0)._2)
+        }, labelColIndex)
       }
     }
     arrayOfRDDs
